@@ -12,7 +12,7 @@ Project thiết kế RTL theo flow 5 stage, mỗi stage là một skill trong `.
 | S2 | `/rtl-s2-diagram <m> [--level L0\|L1\|L2] [--format mermaid\|html\|both]` | Module được nêu | `doc/diagram/<m>/` |
 | S3 | `/rtl-s3-rtl <m>` | Module được nêu | `rtl/<m>.v` (Verilog-2005) |
 | S4 | `/rtl-s4-vplan <m>` | Module được nêu (tùy chọn) | `doc/vplan/` |
-| S5 | `/rtl-s5-tb <m>` | Module được nêu (tùy chọn) | `tb/<m>/`, `sim/<m>/` |
+| S5 | `/rtl-s5-tb <m>` | Module được nêu (tùy chọn) | `tb/<m>/tb_<m>.v`, `sim/<m>/` |
 
 ## Tài liệu co giãn theo độ phức tạp phần cứng
 
@@ -49,7 +49,7 @@ Level diagram S2 theo vai trò module:
 9. **S2–S5 chỉ làm đúng module được nêu tên**, không nhận "all". Không có tên → liệt kê module hiện có và hỏi. Module cha instance module con nhưng không tự viết module con.
 10. **Không bịa thông số.** Thiếu thông tin ảnh hưởng chức năng/interface/width/thanh ghi/latency bắt buộc → `OPEN-xxx` (S1) hoặc `TBD` (S4) và báo người dùng. Chi tiết nhỏ không cần OPEN. Giả định (vd. clock/reset, hành vi input không hợp lệ khi input không nêu) ghi rõ là giả định, không trình bày như yêu cầu. Spec `PASS` = đủ để làm S2/S3 không phải đoán; vẫn có thể còn OPEN nhỏ đã có giả định.
 11. **Không tối ưu, không PPA, không phân tích trade-off** trừ khi người dùng yêu cầu. Không coverage, assertion, formal, UVM, synthesis/timing flow.
-12. **Không tạo file rác.** Không file nhật ký, review, tiến độ, checklist, traceability, lịch sử, README phụ, bản nháp, script tạm trong project. Báo cáo nằm trong chat; lịch sử do git giữ. Làm lại module → xóa file cũ của chính stage đó không còn dùng.
+12. **Không tạo file rác.** Không file nhật ký, review, tiến độ, checklist, traceability, lịch sử, README phụ, bản nháp, script tạm trong project. Báo cáo nằm trong chat; lịch sử do git giữ. Làm lại module → xóa file cũ của chính stage đó không còn dùng, trừ file legacy mà SKILL của stage quy định rõ phải giữ (S5: giữ `tb_<m>.sv` cũ, chỉ báo – không tự xóa).
 13. **Nguồn sự thật theo thứ tự:** `doc/spec/source/` → `doc/spec/` → `doc/diagram/` → `rtl/` → `doc/vplan/` → `tb/`. Tên tín hiệu, width, tên module giống hệt nhau ở mọi nơi.
 14. Rule người dùng (`rtl-s3-rtl/coding_rules/`, `rtl-s4-vplan/vplan_template/`, `rtl-s5-tb/tb_coding_rules/`) luôn thắng rule mặc định trong `references/`. Thư mục trống thì dùng mặc định, không chặn flow.
 15. Spec thay đổi sau khi đã có diagram/RTL → liệt kê module bị ảnh hưởng và stage cần chạy lại.
@@ -65,4 +65,4 @@ Module `snake_case`; port `_i` / `_o`; active-low `_n`; thanh ghi `_q`, giá tr�
 
 ## Công cụ (dùng nếu có)
 
-Python 3 (bắt buộc cho script gate) · Node.js + `npm install --prefix .claude/skills/rtl-s2-diagram/scripts` để parse Mermaid bằng thư viện thật · `verilator` / `iverilog` cho lint và mô phỏng (RTL S3 lint ở chế độ Verilog-2005: `iverilog -g2005`, `verilator --default-language 1364-2005`; testbench S5 vẫn SystemVerilog).
+Python 3 (bắt buộc cho script gate) · Node.js + `npm install --prefix .claude/skills/rtl-s2-diagram/scripts` để parse Mermaid bằng thư viện thật · `verilator` / `iverilog` cho lint và mô phỏng (RTL S3 lint ở chế độ Verilog-2005: `iverilog -g2005`, `verilator --default-language 1364-2005`; testbench S5 cũng là Verilog-2005 `.v`, mô phỏng bằng `iverilog -g2005`).

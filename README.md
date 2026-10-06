@@ -76,7 +76,7 @@ Công cụ: Python 3 (bắt buộc), Node.js, `iverilog` và/hoặc `verilator` 
 | `/rtl-s2-diagram <m> [--level Lx] [--format mermaid\|html\|both]` | Diagram kiến trúc của module, mặc định một file `<m>.mmd` (mở trên https://mermaid.live). `--format html\|both` chỉ cho **một** module leaf L2: thêm/chỉ `<m>.html` – RTL schematic chi tiết (DFF, MUX, comparator, cổng, phép toán, hằng, feedback, clock/reset), SVG tự chứa, mở thẳng bằng Chrome/Edge. `.mmd` vẫn là diagram chính thức cho S3. |
 | `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, compile/lint sạch. |
 | `/rtl-s4-vplan <m>` | (tùy chọn) Vplan direct test tối thiểu. |
-| `/rtl-s5-tb <m>` | (tùy chọn) Testbench + script chạy, mô phỏng nếu có simulator. |
+| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/<m>/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`) + script chạy, mô phỏng nếu có simulator. |
 
 Thiết kế nhiều cấp: S2→S3 cho các leaf trước, rồi block, cuối cùng top. Có thể nêu nhiều module trong một lệnh; không có lệnh "all" – chủ ý để bạn duyệt từng module.
 
@@ -101,7 +101,7 @@ Chỉ khi cần
 
 Tùy chọn (S4–S5)
   doc/vplan/<m>_vplan.*
-  tb/<m>/tb_<m>.sv, sim/<m>/<m>.f, run.sh
+  tb/<m>/tb_<m>.v, sim/<m>/<m>.f, run.sh
 ```
 
 ## 6. Gate của từng stage
@@ -127,7 +127,7 @@ Script phục vụ workflow – không bao giờ cần tạo file giả để qu
 | `lint_mermaid.py` | Cú pháp an toàn, đủ port (hỗ trợ gom bus `prefix_*`), width trên thanh ghi/port, cảnh báo diagram quá chi tiết; `--parse` parse bằng Mermaid thật |
 | `render_html.py` | Render HTML RTL schematic (inline SVG, không phụ thuộc ngoài) từ mô hình khối `.mmd` + lớp chi tiết RTL (phương trình từng khối, qua stdin) – chỉ leaf L2; kiểm lớp chi tiết khớp mô hình (không thêm thanh ghi, cùng kết nối); `--check` kiểm metadata và cùng mô hình với `.mmd` |
 | `check_ports.py` | Port list RTL so với bảng port (tính width từ parameter, kể cả `$clog2`) |
-| `check_sim_log.py` | Mọi test ID trong vplan có PASS trong log |
+| `check_sim_log.py` | Log S5 (`-- <item name> test --`, `[<time>] <case> PASS\|FAIL \| expected: … \| actual: …`, `[SUMMARY]`): map tên item về ID vplan; mọi item vplan có case và đều PASS, `[SUMMARY]` khớp số dòng PASS/FAIL, không TIMEOUT |
 
 ## 8. Lưu ý
 
