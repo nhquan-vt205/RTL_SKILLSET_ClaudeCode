@@ -1,0 +1,49 @@
+%% module : dma_top
+%% stage  : 2 - diagram L0 (block / integration)
+%% nguon  : doc/spec/architecture/dma_top_spec.md + bang port cua dma_regs, dma_engine, dma_irq
+%% mo tren: https://mermaid.live
+flowchart LR
+
+  %% ===== INPUT PORTS =====
+  pi_clk>"clk_i [0:0]"]
+  pi_rst>"rst_n_i [0:0]"]
+  pi_apb>"s_apb_* : APB4, ADDR 12, DATA 32"]
+
+  %% ===== OUTPUT PORTS =====
+  po_mem(["m_mem_* : master, DATA 32, ADDR 32<br/>valid/ready + rdata chieu ve"])
+  po_irq(["irq_o [0:0]"])
+
+  subgraph M_dma_top["dma_top"]
+    direction LR
+    n_clkrst["clk_i / rst_n_i<br/>den moi instance"]
+    u_regs[["u_regs : dma_regs"]]
+    u_eng[["u_eng : dma_engine"]]
+    u_irq[["u_irq : dma_irq"]]
+    glue_and["AND<br/>irq_o = irq_raw AND irq_en"]
+  end
+
+  %% ===== DATA =====
+  pi_apb -->|"s_apb_* APB4"| u_regs
+  u_regs -->|"cfg_src [31:0], cfg_dst [31:0], cfg_len [15:0]"| u_eng
+  u_eng -->|"m_mem_*"| po_mem
+
+  %% ===== CONTROL =====
+  u_regs -.->|"start_pulse"| u_eng
+  u_eng -.->|"busy, done_pulse"| u_regs
+  u_eng -.->|"done_pulse"| u_irq
+  u_regs -.->|"irq_clr"| u_irq
+  u_irq -.->|"irq_raw"| glue_and
+  u_regs -.->|"irq_en"| glue_and
+  glue_and -.-> po_irq
+  pi_clk -.-> n_clkrst
+  pi_rst -.-> n_clkrst
+
+  %% ===== STYLE =====
+  classDef port fill:#e8eaf6,stroke:#3949ab,color:#1a237e
+  classDef inst fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,color:#311b92
+  classDef logic fill:#f5f5f5,stroke:#616161,color:#212121
+  classDef note fill:#fffde7,stroke:#f9a825,stroke-dasharray:4 3,color:#5d4037
+  class pi_clk,pi_rst,pi_apb,po_mem,po_irq port
+  class u_regs,u_eng,u_irq inst
+  class glue_and logic
+  class n_clkrst note

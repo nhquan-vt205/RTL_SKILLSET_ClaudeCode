@@ -1,0 +1,8 @@
+node_modules/
+sim/**/logs/
+sim/**/obj_dir/
+*.vvp
+*.vcd
+*.fsdb
+obj_dir/
+work/

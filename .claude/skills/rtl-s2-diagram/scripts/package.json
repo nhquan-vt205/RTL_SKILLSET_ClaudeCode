@@ -1,0 +1,10 @@
+{
+  "name": "rtl-s2-mermaid-check",
+  "private": true,
+  "type": "module",
+  "description": "Parse .mmd bằng thư viện Mermaid thật (cùng parser với mermaid.live). Cài: npm install --prefix .claude/skills/rtl-s2-diagram/scripts",
+  "dependencies": {
+    "mermaid": "^11.0.0",
+    "jsdom": "^24.0.0"
+  }
+}

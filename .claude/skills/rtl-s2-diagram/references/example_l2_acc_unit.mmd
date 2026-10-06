@@ -1,0 +1,52 @@
+%% module : acc_unit
+%% stage  : 2 - diagram L2 (RTL-oriented sketch)
+%% nguon  : doc/spec/acc_unit_spec.md
+%% mo tren: https://mermaid.live
+flowchart LR
+
+  %% ===== INPUT PORTS =====
+  pi_clk>"clk_i [0:0]"]
+  pi_rst>"rst_n_i [0:0]"]
+  pi_din>"din_i [15:0]"]
+  pi_vld>"din_valid_i [0:0]"]
+  pi_clr>"clr_i [0:0]"]
+  pi_thr>"thr_i [39:0]"]
+
+  %% ===== OUTPUT PORTS =====
+  po_acc(["acc_o [39:0]"])
+  po_hit(["hit_o [0:0]"])
+
+  subgraph M_acc_unit["acc_unit"]
+    direction LR
+    n_clkrst["clk_i rising / rst_n_i async low<br/>moi thanh ghi reset ve 0"]
+    blk_nxt["NEXT ACC<br/>clr_i: 0<br/>din_valid_i: acc_q + sext(din_i)"]
+    reg_acc["acc_q [39:0]<br/>cap nhat khi din_valid_i OR clr_i"]
+    blk_hit["HIT<br/>acc_q ≥ thr_i"]
+    reg_hit["hit_q [0:0]"]
+  end
+
+  %% ===== DATA =====
+  pi_din -->|"din_i [15:0]"| blk_nxt
+  blk_nxt -->|"acc_d [39:0]"| reg_acc
+  reg_acc -->|"acc_q [39:0]"| blk_nxt
+  reg_acc -->|"acc_q [39:0]"| blk_hit
+  pi_thr -->|"thr_i [39:0]"| blk_hit
+  blk_hit -->|"hit_d [0:0]"| reg_hit
+  reg_acc -->|"[39:0]"| po_acc
+  reg_hit -->|"[0:0]"| po_hit
+
+  %% ===== CONTROL =====
+  pi_vld -.->|"din_valid_i"| blk_nxt
+  pi_clr -.->|"clr_i"| blk_nxt
+  pi_clk -.-> n_clkrst
+  pi_rst -.-> n_clkrst
+
+  %% ===== STYLE =====
+  classDef port fill:#e8eaf6,stroke:#3949ab,color:#1a237e
+  classDef reg fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#3e2723
+  classDef blk fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+  classDef note fill:#fffde7,stroke:#f9a825,stroke-dasharray:4 3,color:#5d4037
+  class pi_clk,pi_rst,pi_din,pi_vld,pi_clr,pi_thr,po_acc,po_hit port
+  class reg_acc,reg_hit reg
+  class blk_nxt,blk_hit blk
+  class n_clkrst note
