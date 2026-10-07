@@ -60,8 +60,8 @@ Chung:
 - Port list giống hệt bảng port (tên, hướng, width, thứ tự), kiểu ANSI Verilog-2005; output gán trong `always` là `output reg`.
 - FSM: `localparam STATE_*` cho mã trạng thái + `reg` `state_q` / `state_d` + khối thanh ghi + khối `always @(*)` có `default` về trạng thái an toàn (mẫu trong `default_rtl_rules.md`).
 - Header ngắn: tên module, 1–2 câu chức năng, đường dẫn spec/diagram.
-- Comment ngắn theo kiến trúc khi giúp đọc (`// Accumulator state`). Không bắt buộc comment node id kiểu `// [reg_acc]` (trừ khi coding rule yêu cầu).
-- Chỗ áp giả định `OPEN-xxx` → comment `// OPEN-xxx: <giả định>`.
+- Code, tên định danh và comment chỉ dùng tiếng Anh. Comment ngắn theo kiến trúc khi giúp đọc (`// Accumulator state`). Không bắt buộc comment node id kiểu `// [reg_acc]` (trừ khi coding rule yêu cầu).
+- Chỗ áp giả định `OPEN-xxx` → comment `// OPEN-xxx: <assumption>`.
 
 Spec/diagram sai hoặc thiếu đến mức không viết được đúng chức năng (width không đủ, enable mơ hồ, FSM thiếu chuyển, diagram mâu thuẫn bảng port) → **dừng module đó**, không tự sửa thiết kế. Báo: file, vị trí, vấn đề, cần sửa ở S1 hay S2.
 

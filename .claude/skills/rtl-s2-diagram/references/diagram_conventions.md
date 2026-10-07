@@ -10,23 +10,23 @@ Diagram là mô hình kiến trúc, không phải netlist: một khối diagram 
 
 ```text
 %% module : <m>
-%% stage  : 2 - diagram L0 | L1 | L2      <- gate S3 đọc level từ dòng này
-%% nguon  : <file spec đã dùng>
-%% param  : <giá trị parameter dùng để ghi width>   (nếu có)
-%% mo tren: https://mermaid.live
+%% stage  : 2 - diagram L0 | L1 | L2      <- the S3 gate reads the level from this line
+%% source : <spec file used>
+%% param  : <parameter values used for widths>   (if any)
+%% open in: https://mermaid.live
 flowchart LR
-  %% ===== INPUT PORTS =====      ngoài subgraph, bên trái
-  %% ===== OUTPUT PORTS =====     ngoài subgraph, bên phải
+  %% ===== INPUT PORTS =====      outside the subgraph, left
+  %% ===== OUTPUT PORTS =====     outside the subgraph, right
   subgraph M_<m>["<m>"]
     direction LR
-    ... phần tử bên trong, khai báo theo thứ tự dòng dữ liệu ...
+    ... inner elements, in data-flow order ...
   end
-  %% ===== DATA =====             cạnh nét liền
-  %% ===== CONTROL =====          cạnh nét đứt
+  %% ===== DATA =====             solid edges
+  %% ===== CONTROL =====          dashed edges
   %% ===== STYLE =====            classDef + class
 ```
 
-Comment `%%` chỉ dùng ASCII không dấu. Nhãn trong nháy kép được dùng tiếng Việt có dấu.
+Diagram chỉ dùng tiếng Anh: comment `%%` là tiếng Anh ASCII, mọi nhãn node/cạnh là tiếng Anh; không dùng tiếng Việt. (Diagram cũ có `%% nguon :` vẫn được script đọc.)
 
 ## 2. Ký hiệu phần tử
 
@@ -68,7 +68,7 @@ Một nguồn tới nhiều đích → nhiều cạnh từ cùng node; không t�
 - Khai báo node theo thứ tự dòng dữ liệu – Mermaid xếp node theo thứ tự xuất hiện, nên khai báo đúng thứ tự giảm đường chéo.
 - Nhãn ngắn: tối đa 3 dòng `<br/>`.
 - Gom tín hiệu điều khiển cùng nguồn–đích vào một cạnh (`"wr_en, rd_en"`) thay vì nhiều cạnh song song.
-- L1 pipeline: mỗi tầng một `subgraph S1["Tầng 1"]` lồng trong subgraph module.
+- L1 pipeline: mỗi tầng một `subgraph S1["Stage 1"]` lồng trong subgraph module.
 - Nhiều clock domain: mỗi domain một subgraph, điểm CDC là node riêng.
 - Diagram quá ~30–40 node thường là dấu hiệu đang vẽ quá chi tiết → gom trước khi nghĩ tới chia file.
 
@@ -95,21 +95,21 @@ Một nguồn tới nhiều đích → nhiều cạnh từ cùng node; không t�
 
 ## 7. Mẫu `<m>_notes.md` (tùy chọn – chỉ khi SKILL.md Bước 4 cần)
 
-Chỉ ghi điều diagram và spec chưa nói rõ; không liệt kê lại từng node, không cột ID truy vết. Dòng đầu ghi level.
+Chỉ ghi điều diagram và spec chưa nói rõ; không liệt kê lại từng node, không cột ID truy vết. Dòng đầu ghi level. Phần mô tả tiếng Anh trước + bản dịch `_VI:_`; bảng chỉ tiếng Anh.
 
 ```markdown
-# <m> – Ghi chú thiết kế
+# <m> – Design notes / Ghi chú thiết kế
 Level: L1 · Diagram: <m>.mmd
 
-## Hiện thực
-| Khối | Hiện thực RTL dự kiến | Ghi chú |
+## Implementation / Hiện thực
+| Block | Planned RTL implementation | Notes |
 | --- | --- | --- |
-| `reg_mem` | `reg [DATA_W-1:0] mem_q [0:DEPTH-1]`, không reset | ghi khi `wr_en` |
-| `fsm_ctl` | `state_q` + `localparam` STATE_IDLE/RUN/DONE | chuyển trạng thái: xem spec mục Hành vi |
-| `gen_lane` | `generate for` (`genvar i`) + `mac_lane` | 4 lane |
+| `reg_mem` | `reg [DATA_W-1:0] mem_q [0:DEPTH-1]`, no reset | written when `wr_en` |
+| `fsm_ctl` | `state_q` + `localparam` STATE_IDLE/RUN/DONE | state transitions: see the spec Behavior section |
+| `gen_lane` | `generate for` (`genvar i`) + `mac_lane` | 4 lanes |
 
-## Net nội bộ (L0 nhiều instance)
-| Net | Width | Nguồn (inst.port) | Đích (inst.port) |
+## Internal nets (L0 with many instances) / Net nội bộ
+| Net | Width | Source (inst.port) | Destination (inst.port) |
 | --- | --- | --- | --- |
 | `start_pulse` | 1 | `u_regs.start_o` | `u_eng.start_i` |
 ```

@@ -9,6 +9,7 @@ Mục tiêu: testbench direct, tự kiểm, mô phỏng tất định, đọc đ
 - **Cấm** (SystemVerilog): `logic`, `bit`, `byte`, `int`, `string`, `always_ff`, `always_comb`, `always_latch`, `typedef`, `enum`, `struct`, `union`, `interface`/`modport`, `package`/`import`, `class`, `virtual`, `foreach`, queue, mảng động, `mailbox`, `assert`/`property` (SVA), cast `type'(...)`, literal `'0`/`'1`, `$fatal`, khai báo biến trong `for` (`for (int i …)`).
 - Chuỗi (tên item, tên case, ID test): `reg [8*N-1:0]`; ghép chuỗi động bằng `$sformat(case_name, "addr_%0h_wdata_%h", addr, wdata);`; in bằng `%0s`.
 - `` `timescale 1ns/1ps `` đầu file.
+- Comment, tên task/function/tín hiệu, chuỗi in và log chỉ dùng tiếng Anh.
 
 ## 2. Cấu trúc file – bắt buộc, đúng thứ tự
 
@@ -90,7 +91,7 @@ Ví dụ:
 [SUMMARY] PASS=3 FAIL=1
 ```
 
-- `-- <item name> test --`: in ở đầu task của mỗi item vplan. `<item name>` là **tên ngắn, đọc được, lấy từ vplan** (không thay bằng ID): vplan mặc định – phần tên sau ID ở heading `### TC_<M>_001 – <tên>`; template bảng có cột `ID` – cột cụ thể nhất (thường `Sub item 2`), chỉ thêm cột phía trước (`Sub item 1`, rồi `Item`, nối bằng ` / `) khi cần để phân biệt với item khác, bỏ ô trống/`—` (vd. `-- DATA Register 0 / Reset value check test --`, `-- Single Write test --`). Lấy đúng danh sách header bằng `python3 .claude/skills/rtl-s5-tb/scripts/check_sim_log.py --items doc/vplan/<m>_vplan.<ext>`; checker dùng tên này để map về ID vplan. Chỉ ghi ID thay tên khi item trong vplan không có tên hoặc tên trùng với item khác. Mọi case in sau header thuộc item đó.
+- `-- <item name> test --`: in ở đầu task của mỗi item vplan. `<item name>` là **tên tiếng Anh ngắn, đọc được, lấy từ vplan** (không thay bằng ID, không dịch): vplan mặc định – phần tên sau ID ở heading `### TC_<M>_001 – <tên>`; template bảng có cột `ID` – cột cụ thể nhất (thường `Sub item 2`), chỉ thêm cột phía trước (`Sub item 1`, rồi `Item`, nối bằng ` / `) khi cần để phân biệt với item khác, bỏ ô trống/`—` (vd. `-- DATA Register 0 / Reset value check test --`, `-- Single Write test --`). Lấy đúng danh sách header bằng `python3 .claude/skills/rtl-s5-tb/scripts/check_sim_log.py --items doc/vplan/<m>_vplan.<ext>`; checker dùng tên này để map về ID vplan. Chỉ ghi ID thay tên khi item trong vplan không có tên hoặc tên trùng với item khác. Mọi case in sau header thuộc item đó.
 - `[<time>]`: thời gian mô phỏng hiện tại, `$time` theo ns, in `%0d`.
 - `<case>`: tên ngắn, không khoảng trắng, mô tả **đặc điểm input quan trọng** của case – `addr_0_wdata_A5A5A5A5`, `valid_1_ready_0`, `clr_1_en_1_pulse_1`; nhiều input quan trọng thì ghép đủ vào tên. Không dùng tên vô nghĩa kiểu `CASE_001`, `TEST_01`. Ghép động bằng `$sformat`.
 - `PASS`/`FAIL`: quyết định của checker. `expected`: giá trị golden model. `actual`: giá trị DUT. In bằng `%h` (bus ra đủ chữ số hex theo width, 1 bit ra `0`/`1`), không thêm tiền tố.
@@ -310,7 +311,7 @@ Filelist `sim/<m>/<m>.f`: RTL cả cây (`rtl/*.v`) rồi `tb/<m>/tb_<m>.v`, m�
 
 ```bash
 #!/usr/bin/env bash
-# Dùng: sim/<m>/run.sh [TEST_ID|ALL] [+DUMP]   (chạy từ gốc project)
+# Usage: sim/<m>/run.sh [TEST_ID|ALL] [+DUMP]   (run from the project root)
 set -e
 M=<m>; T=${1:-ALL}; mkdir -p sim/$M/logs
 if command -v iverilog >/dev/null; then
@@ -320,7 +321,7 @@ elif command -v verilator >/dev/null; then
   verilator --binary --timing -Wno-fatal -Wno-TIMESCALEMOD -Wno-WIDTH --top-module tb_$M -f sim/$M/$M.f --Mdir sim/$M/obj_dir -o tb_$M
   sim/$M/obj_dir/tb_$M +TEST=$T $2 | tee sim/$M/logs/run.log
 else
-  echo "Không có simulator (iverilog/verilator)"; exit 2
+  echo "No simulator found (iverilog/verilator)"; exit 2
 fi
 ```
 

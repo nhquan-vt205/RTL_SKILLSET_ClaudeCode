@@ -11,6 +11,8 @@ Tham số: `$ARGUMENTS` – một hoặc nhiều tên module, tùy chọn `--lev
 
 Diagram là **mô hình kiến trúc đủ để viết RTL**, không phải sơ đồ cổng và không phải AST của RTL. Nó cho thấy: ranh giới module, thanh ghi/trạng thái, datapath chính, khối điều khiển, đường dữ liệu lớn. Ưu tiên: **dễ đọc → rõ kiến trúc → rõ luồng tín hiệu**, trước mọi sự đầy đủ chi tiết. Diagram 15 node sạch tốt hơn 50 node trông như netlist.
 
+Ngôn ngữ đầu ra: `.mmd` (nhãn node/cạnh, comment `%%`) và `<m>.html` chỉ dùng tiếng Anh – không đưa tiếng Việt vào nhãn, tên tín hiệu, tên module. `<m>_notes.md` (nếu có): phần mô tả tiếng Anh trước + bản dịch `_VI:_`, bảng chỉ tiếng Anh.
+
 ## Phạm vi
 
 - Chỉ làm đúng module(s) được nêu tên; không nhận "all", không tiện tay vẽ module cha/con. Không có tên → liệt kê module hiện có (gate in ra) kèm level đề xuất và hỏi.
@@ -41,9 +43,9 @@ Gọi một lần với **mọi module của lệnh**, kèm đúng `--level`/`--
 | --- | --- | --- | --- |
 | L0, L1 | `<m>.mmd` | không | không |
 | L2 leaf | `<m>.mmd` | `<m>.html` | `<m>.mmd` + `<m>.html` |
-| L2 không phải leaf (có module con, hoặc `Loại` là `top`/`block`) | `<m>.mmd` | không | không |
+| L2 không phải leaf (có module con, hoặc `Type` là `top`/`block`) | `<m>.mmd` | không | không |
 
-- `html`/`both` chỉ khi lệnh có **đúng một module**, module là **leaf** theo hierarchy (gate kiểm: không có module con, `Loại` không phải `top`/`block`) và level **L2**. Gate báo `[THIẾU]` hoặc mã thoát 2 → dừng, báo lỗi; **không tự chuyển sang Mermaid**.
+- `html`/`both` chỉ khi lệnh có **đúng một module**, module là **leaf** theo hierarchy (gate kiểm: không có module con, `Type` không phải `top`/`block`) và level **L2**. Gate báo `[THIẾU]` hoặc mã thoát 2 → dừng, báo lỗi; **không tự chuyển sang Mermaid**.
 - Với `html`/`both`, level phải giữ L2: đọc spec thấy cần lệch sang L1 → dừng, báo lý do, đề nghị gọi lại với `--format mermaid`.
 - `<m>.mmd` luôn là diagram chính thức (S3 chỉ đọc nó) – mô hình khối, trả lời "module gồm những khối nào". `<m>.html` là **RTL schematic chi tiết** để người thiết kế xem – trả lời "các khối phần cứng nối với nhau thế nào" ở mức DFF/MUX/comparator/cổng/phép toán/hằng; không phải dependency của stage nào.
 - Mỗi định dạng chỉ ghi file của nó: `mermaid` chỉ ghi `.mmd` (`.html` cũ không còn khớp thì xóa, mục Phạm vi), `html` chỉ ghi `.html` (không đụng `.mmd` đã có), `both` ghi cả hai.

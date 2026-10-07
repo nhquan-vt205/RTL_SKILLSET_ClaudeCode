@@ -30,6 +30,8 @@ Cần spec PASS, bảng port, `rtl/<m>.sv|.v`. Mã thoát ≠ 0 → bỏ qua mod
 
 Có file trong `vplan_template/` (trừ README.md) → theo đúng template: định dạng (.md/.xlsx/.docx/.csv), cột, quy ước ID; .xlsx/.docx giữ nguyên sheet/style, chỉ điền dữ liệu; nhiều template → hỏi dùng cái nào. Thư mục trống → định dạng Markdown mặc định trong `references/test_selection.md`.
 
+**Ngôn ngữ của vplan:** checklist chỉ dùng tiếng Anh – mọi tiêu đề và ô bảng, tên item, sub item, test sequence, pass condition, và (định dạng mặc định) tên trong heading test cùng các dòng trường. Không dịch nội dung ô sang tiếng Việt, không viết ô hai ngôn ngữ (`Truy cập thanh ghi / Register access` sai; `Register access` đúng). ID VPLAN giữ nguyên. Phần mô tả ngoài checklist: tiếng Anh trước, rồi bản dịch `_VI:_`. Lý do: S5 chép tên item vào header log (`-- Reset value check test --`).
+
 ## Bước 2 – Chọn test
 
 Theo `references/test_selection.md` – số test tỉ lệ với số chức năng, không với số trạng thái:
@@ -37,9 +39,9 @@ Theo `references/test_selection.md` – số test tỉ lệ với số chức n�
 - **Leaf:** reset, mỗi chức năng chính 1 test, vài giá trị biên, handshake/lỗi nếu spec có.
 - **Block / top (có module con):** cấu hình → chạy một thao tác hoàn chỉnh → kiểm output/status; thêm vài thao tác liên tiếp, biên quan trọng, lỗi chính. Không cần test lại từng module con.
 
-Mỗi test có: ID (`TC_<MODULE>_<NNN>` nếu template không quy định), mục tiêu, chức năng trong spec được kiểm (kèm REQ-ID nếu spec có), stimulus theo chu kỳ, **kết quả mong đợi bằng số** (tính từ công thức/latency, ghi phép tính), tiêu chí PASS. Không đủ thông tin để tính → `TBD – <thiếu gì>`, không đoán.
+Mỗi test có: ID (`TC_<MODULE>_<NNN>` nếu template không quy định), tên ngắn tiếng Anh phân biệt được, mục tiêu, chức năng trong spec được kiểm (kèm REQ-ID nếu spec có), stimulus theo chu kỳ, **kết quả mong đợi bằng số** (tính từ công thức/latency, ghi phép tính), tiêu chí PASS. Không đủ thông tin để tính → `TBD – <what is missing>`, không đoán.
 
-Cuối vplan: bảng `Chức năng → test ID`; chức năng chính nào chưa có test thì nêu lý do.
+Cuối vplan: bảng `Function → test ID` (tiếng Anh); chức năng chính nào chưa có test thì nêu lý do.
 
 ## Báo cáo cuối (chỉ trong chat)
 

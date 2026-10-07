@@ -1,7 +1,7 @@
 %% module : acc_unit
 %% stage  : 2 - diagram L2 (RTL-oriented sketch)
-%% nguon  : doc/spec/acc_unit_spec.md
-%% mo tren: https://mermaid.live
+%% source : doc/spec/acc_unit_spec.md
+%% open in: https://mermaid.live
 flowchart LR
 
   %% ===== INPUT PORTS =====
@@ -18,9 +18,9 @@ flowchart LR
 
   subgraph M_acc_unit["acc_unit"]
     direction LR
-    n_clkrst["clk_i rising / rst_n_i async low<br/>moi thanh ghi reset ve 0"]
+    n_clkrst["clk_i rising / rst_n_i async low<br/>all registers reset to 0"]
     blk_nxt["NEXT ACC<br/>clr_i: 0<br/>din_valid_i: acc_q + sext(din_i)"]
-    reg_acc["acc_q [39:0]<br/>cap nhat khi din_valid_i OR clr_i"]
+    reg_acc["acc_q [39:0]<br/>updated when din_valid_i OR clr_i"]
     blk_hit["HIT<br/>acc_q ≥ thr_i"]
     reg_hit["hit_q [0:0]"]
   end

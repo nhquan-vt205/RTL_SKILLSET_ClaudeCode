@@ -19,6 +19,7 @@ Tham số: `$ARGUMENTS`. Có `--recheck` → chỉ đánh giá input (Bước 1�
 - **Không bao giờ sửa/xóa/đổi tên file trong `doc/spec/source/`.** Input có vấn đề → báo trong chat kèm đề xuất cụ thể.
 - **Không bịa thông số.** Thiếu mà có giả định hợp lý → `OPEN-xxx` + giả định. Chỉ dùng OPEN cho điều ảnh hưởng chức năng, interface, width, hành vi thanh ghi, hoặc latency khi spec yêu cầu – không biến chi tiết nhỏ thành OPEN. Thiếu mà không giả định được → BLOCKER.
 - Không tạo file nhật ký, review, lịch sử, bản nháp. Đánh giá và báo cáo nằm trong chat.
+- **Ngôn ngữ của spec được tạo:** phần mô tả viết tiếng Anh trước, rồi bản dịch tiếng Việt trung thành đánh dấu `_VI:_` (bản tiếng Việt không thêm hay đổi yêu cầu); mọi bảng (interface, parameter, thanh ghi, yêu cầu, hierarchy, chuyển trạng thái, width/công thức, OPEN) chỉ tiếng Anh. Không dịch tên tín hiệu, module, thanh ghi, địa chỉ, ID REQ/OPEN, code, biểu thức toán.
 
 ## Bước 0 – Gate
 
@@ -69,15 +70,15 @@ Theo mục 2 của `references/process.md`:
 | Leaf nhỏ: counter, FSM, FIFO nhỏ, APB slave ít thanh ghi, ALU đơn giản | `L2` – phác thảo hướng RTL |
 | Leaf lớn / cấu trúc lặp: mảng thanh ghi/bộ nhớ, pipeline, mảng PE/MAC, DMA channel; block có module con **và** nhiều logic riêng | `L1` – vi kiến trúc |
 
-Chế độ phân cấp: ghi ngay `spec_status.md` (định dạng ở Bước 5) với `TRẠNG THÁI: FAIL` – script kiểm interface cần bảng module để biết quan hệ cha–con.
+Chế độ phân cấp: ghi ngay `spec_status.md` (định dạng ở Bước 5) với `STATUS: FAIL` – script kiểm interface cần bảng module để biết quan hệ cha–con.
 
-Chế độ quyết định theo hierarchy thật, không theo việc `spec_status.md` đã có hay chưa. Gate báo "phát hiện thiết kế phân cấp … nhưng thiếu spec_status.md" (spec cũ ở `architecture/`, có `Loại: top|block` hoặc `Cha:`) → đây là project phân cấp: tạo `spec_status.md` với bảng module thật, không xếp về chế độ đơn và không tạo bản giả chỉ để qua gate.
+Chế độ quyết định theo hierarchy thật, không theo việc `spec_status.md` đã có hay chưa. Gate báo "phát hiện thiết kế phân cấp … nhưng thiếu spec_status.md" (spec cũ ở `architecture/`, có `Type: top|block` hoặc `Parent:`) → đây là project phân cấp: tạo `spec_status.md` với bảng module thật, không xếp về chế độ đơn và không tạo bản giả chỉ để qua gate.
 
 ## Bước 4 – Viết spec
 
 Theo template ở mục 4–6 của `references/process.md`.
 
-- **Chế độ đơn:** một file `doc/spec/<m>_spec.md`. Dòng thứ hai bắt buộc theo dạng `Loại: leaf · Level: L2 · Trạng thái: PASS` (gate các stage sau đọc dòng này). Interface là một bảng có cột `Tên port` ngay trong spec. Chỉ tách `doc/spec/interface/<m>_interface.md` khi interface khó đọc trong spec (vd. nhiều bus, cỡ trên ~20 port) hoặc được module khác dùng lại. Các con số trong tiêu chí tách là gợi ý, không phải ngưỡng bắt buộc – quyết định theo độ dễ đọc (mục 3 của process.md).
+- **Chế độ đơn:** một file `doc/spec/<m>_spec.md`. Dòng thứ hai bắt buộc theo dạng `Type: leaf · Level: L2 · Status: PASS` (gate các stage sau đọc dòng này). Interface là một bảng có cột `Port name` ngay trong spec. Chỉ tách `doc/spec/interface/<m>_interface.md` khi interface khó đọc trong spec (vd. nhiều bus, cỡ trên ~20 port) hoặc được module khác dùng lại. Các con số trong tiêu chí tách là gợi ý, không phải ngưỡng bắt buộc – quyết định theo độ dễ đọc (mục 3 của process.md).
 - **Chế độ phân cấp:** mỗi module một `architecture/<m>_spec.md`; spec top thêm phần tổng quan dự án. Interface của module có thể nằm trong spec (leaf nhỏ) hoặc `interface/<m>_interface.md`. Chỉ tạo `interface/00_parameters.md`, `datapath/`, `controlpath/`, `register_file/` khi nội dung đủ lớn để tách giúp dễ đọc (tiêu chí ở mục 3 của process.md).
 
 REQ/DAT/CTL ID không bắt buộc. Chỉ dùng ở IP lớn khi cần truy vết yêu cầu qua nhiều module.
@@ -90,29 +91,29 @@ python3 .claude/skills/rtl-s1-spec/scripts/check_interface.py
 
 Sửa spec đến khi hết `[LỖI]` (script hiểu cả hai chế độ; ở chế độ phân cấp kiểm nối cha–con và anh em). Tự rà các mục ở mục 7 của `references/process.md`, rồi chốt trạng thái:
 
-- **Chế độ đơn:** `Trạng thái: PASS` hoặc `FAIL` trên dòng thứ hai của spec. Không tạo `spec_status.md`.
+- **Chế độ đơn:** `Status: PASS` hoặc `FAIL` trên dòng thứ hai của spec. Không tạo `spec_status.md`.
 - **Chế độ phân cấp:** hoàn thiện `doc/spec/spec_status.md` **đúng định dạng** (script đọc):
 
 ```markdown
 # Spec status
 
-TRẠNG THÁI: PASS
-Input: <các file trong doc/spec/source/>
+STATUS: PASS
+Input: <files in doc/spec/source/>
 
-## Danh sách module
-| Module | Cha | Loại | Level | Chức năng |
+## Module list
+| Module | Parent | Type | Level | Function |
 | --- | --- | --- | --- | --- |
-| `dma_top` | – | top | L0 | Top IP |
-| `dma_regs` | `dma_top` | leaf | L2 | APB slave, thanh ghi cấu hình |
-| `dma_engine` | `dma_top` | block | L0 | Điều khiển truyền dữ liệu |
-| `dma_rd` | `dma_engine` | leaf | L1 | Kênh đọc |
+| `dma_top` | – | top | L0 | IP top |
+| `dma_regs` | `dma_top` | leaf | L2 | APB slave, configuration registers |
+| `dma_engine` | `dma_top` | block | L0 | Data transfer control |
+| `dma_rd` | `dma_engine` | leaf | L1 | Read channel |
 
 ## OPEN
-| ID | Nội dung | Giả định tạm | Ảnh hưởng |
+| ID | Description | Interim assumption | Impact |
 | --- | --- | --- | --- |
 ```
 
-Bảng module xếp theo cây (cha trước con). `FAIL` thì thêm một dòng `Lý do:` ngay dưới trạng thái. Không có OPEN thì bỏ mục OPEN.
+Bảng module xếp theo cây (cha trước con). `FAIL` thì thêm một dòng `Reason:` ngay dưới trạng thái. Không có OPEN thì bỏ mục OPEN.
 
 `PASS` nghĩa là spec **đủ để làm tiếp S2/S3 mà không phải đoán**, không phải mọi chi tiết đã được chốt hình thức:
 

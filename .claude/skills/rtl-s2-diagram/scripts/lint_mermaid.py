@@ -5,7 +5,7 @@ Lint file .mmd của stage 2 (mọi level L0/L1/L2) theo references/diagram_conv
 Dùng:
   python3 lint_mermaid.py <file.mmd> [<file2.mmd> ...] [--interface <file có bảng port>] [--parse]
 
-  --interface : file chứa bảng port (cột "Tên port") – doc/spec/<m>_spec.md hoặc
+  --interface : file chứa bảng port (cột "Port name", bản cũ "Tên port") – doc/spec/<m>_spec.md hoặc
                 interface/<m>_interface.md. Mọi port phải có node pi_/po_ (tính gộp trên mọi part).
                 Node gom bus dạng `s_apb_*` phủ mọi port bắt đầu bằng `s_apb_`.
   --parse     : parse thêm bằng thư viện Mermaid thật qua Node.js
@@ -115,12 +115,12 @@ def iface_ports(md: Path):
             continue
         cells = [re.sub(r"[`*]", "", c).strip() for c in line.strip().strip("|").split("|")]
         if header is None:
-            if any(c.lower().startswith("tên port") for c in cells):
+            if any(c.lower().startswith(("port name", "tên port")) for c in cells):
                 header = [c.lower() for c in cells]
             continue
         if set("".join(cells)) <= set("-: "):
             continue
-        idx = next(i for i, h in enumerate(header) if h.startswith("tên port"))
+        idx = next(i for i, h in enumerate(header) if h.startswith(("port name", "tên port")))
         if idx < len(cells) and cells[idx]:
             ports.append(cells[idx])
     return ports
@@ -150,7 +150,7 @@ def main():
     files = [Path(f) for f in a.files]
     ports = iface_ports(Path(a.interface)) if a.interface else None
     if ports is not None and not ports:
-        print(f"[LỖI]      {a.interface}: không có bảng port (cột 'Tên port')")
+        print(f"[LỖI]      {a.interface}: không có bảng port (cột 'Port name')")
         sys.exit(1)
 
     total_err = 0

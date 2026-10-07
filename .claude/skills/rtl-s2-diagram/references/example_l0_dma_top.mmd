@@ -1,7 +1,7 @@
 %% module : dma_top
 %% stage  : 2 - diagram L0 (block / integration)
-%% nguon  : doc/spec/architecture/dma_top_spec.md + bang port cua dma_regs, dma_engine, dma_irq
-%% mo tren: https://mermaid.live
+%% source : doc/spec/architecture/dma_top_spec.md + port tables of dma_regs, dma_engine, dma_irq
+%% open in: https://mermaid.live
 flowchart LR
 
   %% ===== INPUT PORTS =====
@@ -10,12 +10,12 @@ flowchart LR
   pi_apb>"s_apb_* : APB4, ADDR 12, DATA 32"]
 
   %% ===== OUTPUT PORTS =====
-  po_mem(["m_mem_* : master, DATA 32, ADDR 32<br/>valid/ready + rdata chieu ve"])
+  po_mem(["m_mem_* : master, DATA 32, ADDR 32<br/>valid/ready + rdata return"])
   po_irq(["irq_o [0:0]"])
 
   subgraph M_dma_top["dma_top"]
     direction LR
-    n_clkrst["clk_i / rst_n_i<br/>den moi instance"]
+    n_clkrst["clk_i / rst_n_i<br/>to every instance"]
     u_regs[["u_regs : dma_regs"]]
     u_eng[["u_eng : dma_engine"]]
     u_irq[["u_irq : dma_irq"]]
