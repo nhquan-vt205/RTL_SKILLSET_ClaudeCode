@@ -22,8 +22,8 @@ Project thiết kế RTL theo flow 5 stage, mỗi stage là một skill trong `.
 | Module trung bình (DMA channel, controller có FSM) | đơn | như trên, thêm `interface/<m>_interface.md` hoặc `<m>_notes.md` chỉ khi thực sự giúp đọc |
 | IP nhiều module | phân cấp | `spec_status.md` (hierarchy) + spec từng module; tách `interface/`, `datapath/`, `controlpath/`, `register_file/` khi tách làm dễ đọc hơn |
 
-- **Chế độ đơn**: không có `doc/spec/spec_status.md` và không có quan hệ cha–con. Mỗi module tự đứng một mình; dòng đầu spec ghi `Loại · Level · Trạng thái`.
-- **Chế độ phân cấp**: có `doc/spec/spec_status.md`; bảng "Danh sách module" trong đó là nguồn sự thật duy nhất của hierarchy. Thiết kế có cha–con mà thiếu file này vẫn là phân cấp: gate báo thiếu, chạy `/rtl-s1-spec` để tạo – không xếp về chế độ đơn, không tạo bản giả.
+- **Chế độ đơn**: không có `doc/spec/spec_status.md` và không có quan hệ cha–con. Mỗi module tự đứng một mình; dòng thứ hai của spec ghi `Type · Level · Status`.
+- **Chế độ phân cấp**: có `doc/spec/spec_status.md`; bảng "Module list" trong đó là nguồn sự thật duy nhất của hierarchy. Thiết kế có cha–con mà thiếu file này vẫn là phân cấp: gate báo thiếu, chạy `/rtl-s1-spec` để tạo – không xếp về chế độ đơn, không tạo bản giả.
 - Con số trong tiêu chí tách file (~20 port, ~6 thanh ghi, ~6 trạng thái) là gợi ý; quyết định tách theo độ dễ đọc của tài liệu.
 
 Level diagram S2 theo vai trò module:
@@ -60,7 +60,12 @@ Module `snake_case`; port `_i` / `_o`; active-low `_n`; thanh ghi `_q`, giá tr�
 
 ## Ngôn ngữ và báo cáo
 
-- Tài liệu tiếng Việt; tên tín hiệu, module, code giữ tiếng Anh.
+- **Ngôn ngữ của đầu ra được tạo** (S1–S5; file skill/hướng dẫn không thuộc phạm vi này):
+  - Phần mô tả trong tài liệu được tạo (spec, notes, phần giải thích của vplan): tiếng Anh trước, sau đó là bản dịch tiếng Việt trung thành, đánh dấu `_VI:_`. Bản tiếng Anh là bản chuẩn; bản tiếng Việt không thêm, bớt hay đổi yêu cầu.
+  - Mọi bảng trong tài liệu được tạo chỉ dùng tiếng Anh (tiêu đề và ô); không có ô hai ngôn ngữ.
+  - Chỉ tiếng Anh: code RTL/testbench và comment, tên định danh, ID VPLAN, đường dẫn, lệnh, Mermaid/diagram, dấu hiệu máy đọc (`Type: … · Level: … · Status: …`, `STATUS:`), simulation log.
+  - VPLAN: tên item, sub item, test sequence, pass condition chỉ tiếng Anh – S5 chép tên item vào log (`-- Reset value check test --`).
+  - Rule người dùng (nguyên tắc 14) vẫn được ưu tiên; `doc/spec/source/` giữ ngôn ngữ gốc.
 - Cuối mỗi lần chạy: báo cáo ngắn **trong chat** – trạng thái, file đã tạo/sửa/xóa, vấn đề còn mở, lệnh tiếp theo.
 
 ## Công cụ (dùng nếu có)

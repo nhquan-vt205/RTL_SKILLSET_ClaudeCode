@@ -109,7 +109,7 @@ Tùy chọn (S4–S5)
 | Stage | Cần có trước |
 | --- | --- |
 | S1 | ≥ 1 file trong `doc/spec/source/`; input không có BLOCKER (`input_criteria.md`) |
-| S2 | Spec PASS (dòng `Trạng thái` trong spec, hoặc `spec_status.md` nếu phân cấp) · spec + bảng port của module (và bảng port module con) |
+| S2 | Spec PASS (dòng `Status` trong spec, hoặc `spec_status.md` nếu phân cấp) · spec + bảng port của module (và bảng port module con) |
 | S3 | Điều kiện S2 · `doc/diagram/<m>/*.mmd` (chỉ Mermaid; chỉ có `<m>.html` thì vẫn dừng) |
 | S4 | Spec PASS · spec + bảng port · `rtl/<m>.v` (gate vẫn nhận `.sv` cũ) |
 | S5 | Điều kiện S4 · RTL của mọi module con · `doc/vplan/<m>_vplan.*` |

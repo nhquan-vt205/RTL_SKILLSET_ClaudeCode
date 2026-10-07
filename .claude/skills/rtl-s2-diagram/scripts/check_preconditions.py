@@ -17,13 +17,13 @@ HTML là bản xem trực quan của S2; gate S3 chỉ nhận doc/diagram/<m>/*.
 
 Hai chế độ, tự nhận biết:
   - đơn      : không có doc/spec/spec_status.md và không có dấu hiệu phân cấp. Module = mỗi file
-               doc/spec/<m>_spec.md; dòng đầu spec ghi "Loại · Level · Trạng thái".
-  - phân cấp : có doc/spec/spec_status.md → bảng "Danh sách module" là hierarchy,
-               "TRẠNG THÁI:" là gate chung.
+               doc/spec/<m>_spec.md; dòng đầu spec ghi "Type · Level · Status" (bản cũ: "Loại · Level · Trạng thái").
+  - phân cấp : có doc/spec/spec_status.md → bảng "Module list" (cũ: "Danh sách module") là hierarchy,
+               "STATUS:" (cũ: "TRẠNG THÁI:") là gate chung.
 spec_status.md là nơi ghi hierarchy, không phải dấu hiệu duy nhất. Thiếu nó mà spec cho thấy nhiều
-module có quan hệ cha–con (architecture/ có ≥ 2 spec, spec ghi "Loại: top|block" hoặc "Cha: <m>")
+module có quan hệ cha–con (architecture/ có ≥ 2 spec, spec ghi "Type: top|block" hoặc "Parent: <m>")
 → coi là phân cấp thiếu hierarchy: S1 báo cần tạo, S2–S5 dừng. Không tạo spec_status.md giả để qua gate.
-Bảng port (cột "Tên port") nằm trong interface/<m>_interface.md nếu có, không thì trong spec.
+Bảng port (cột "Port name", bản cũ "Tên port") nằm trong interface/<m>_interface.md nếu có, không thì trong spec.
 Không file nào khác (notes, 00_parameters, datapath/, controlpath/) là bắt buộc.
 
 Script chỉ kiểm cái kiểm được bằng máy. Đánh giá nội dung là việc của Claude theo SKILL.md.
@@ -39,6 +39,10 @@ RTL_EXT = (".sv", ".v")
 LEVELS = ("L0", "L1", "L2")
 FORMATS = ("mermaid", "html", "both")
 NAME = re.compile(r"^[A-Za-z_]\w*$")
+# Khóa máy đọc: tiếng Anh (chuẩn hiện tại) + tiếng Việt (tài liệu cũ)
+PORT_COL = ("port name", "tên port")
+K_TYPE, K_PARENT, K_STATUS = "Type|Loại", "Parent|Cha", "Status|Trạng thái"
+MODULE_LIST = r"#+\s*(?:Module list|Danh sách module)"
 
 
 def real_files(folder: Path):
@@ -78,7 +82,7 @@ def spec_file(root: Path, mod: str):
 
 def has_port_table(p: Path) -> bool:
     for line in read(p).splitlines():
-        if line.strip().startswith("|") and any(c.lower().startswith("tên port") for c in _cells(line)):
+        if line.strip().startswith("|") and any(c.lower().startswith(PORT_COL) for c in _cells(line)):
             return True
     return False
 
@@ -92,9 +96,10 @@ def interface_file(root: Path, mod: str):
 
 
 def header_field(p: Path, key: str):
-    """Giá trị 'key: X' trong 15 dòng đầu file (vd. 'Loại: leaf · Level: L2 · Trạng thái: PASS')."""
+    """Giá trị 'key: X' trong 15 dòng đầu file (vd. 'Type: leaf · Level: L2 · Status: PASS');
+    key có thể là nhiều tên cách bằng '|'."""
     head = "\n".join(read(p).splitlines()[:15])
-    m = re.search(rf"{key}\s*:\s*\**\s*([A-Za-z0-9_]+)", head, re.I)
+    m = re.search(rf"\b(?:{key})\s*:\s*\**\s*([A-Za-z0-9_]+)", head, re.I)
     return m.group(1) if m else ""
 
 
@@ -116,7 +121,7 @@ def hier_signals(root: Path):
     why = [f"architecture/ có {n_arch} spec"] if n_arch >= 2 else []
     for m in spec_modules(root):
         p = spec_file(root, m)
-        kind, parent = header_field(p, "Loại").lower(), header_field(p, "Cha")
+        kind, parent = header_field(p, K_TYPE).lower(), header_field(p, K_PARENT)
         if kind in ("top", "block"):
             why.append(f"`{m}` là {kind}")
         elif parent and parent != m:
@@ -130,16 +135,16 @@ def status_file(root: Path):
 
 
 def global_status(f: Path):
-    m = re.search(r"TRẠNG THÁI\s*:\s*\**\s*(PASS|FAIL)", read(f), re.I)
+    m = re.search(r"(?:STATUS|TRẠNG THÁI)\s*:\s*\**\s*(PASS|FAIL)", read(f), re.I)
     return m.group(1).upper() if m else "UNKNOWN"
 
 
 def module_table(f: Path):
-    """Bảng 'Danh sách module' → [{name, parent, kind, level}] theo thứ tự.
-    Cột nhận diện theo tiêu đề: Module | Cha | Loại | Level."""
+    """Bảng 'Module list' → [{name, parent, kind, level}] theo thứ tự.
+    Cột nhận diện theo tiêu đề: Module | Parent | Type | Level (bản cũ: Cha | Loại)."""
     rows, header, in_sec = [], None, False
     for line in read(f).splitlines():
-        if re.match(r"#+\s*Danh sách module", line, re.I):
+        if re.match(MODULE_LIST, line, re.I):
             in_sec = True
             continue
         if not in_sec:
@@ -166,7 +171,7 @@ def module_table(f: Path):
         parent = col("cha", "parent")
         lv = col("level").upper()
         rows.append({"name": name, "parent": parent if NAME.match(parent or "") else "",
-                     "kind": col("loại", "kind").lower(), "level": lv if lv in LEVELS else ""})
+                     "kind": col("type", "loại", "kind").lower(), "level": lv if lv in LEVELS else ""})
     return rows
 
 
@@ -249,10 +254,10 @@ def check(stage, mod, level_arg, root, skill_dir, fmt="mermaid"):
     if sf:
         info.append("chế độ: phân cấp (doc/spec/spec_status.md)")
         st = global_status(sf)
-        need(st == "PASS", "spec_status.md: TRẠNG THÁI = PASS",
+        need(st == "PASS", "spec_status.md: STATUS = PASS",
              f"Stage 1 chưa PASS (spec_status.md: {st}) – chạy /rtl-s1-spec trước")
         need(mod in names, f"module `{mod}` có trong hierarchy",
-             f"module `{mod}` không có trong 'Danh sách module' của spec_status.md"
+             f"module `{mod}` không có trong 'Module list' của spec_status.md"
              + (f" (hiện có: {', '.join(names)})" if names else ""))
         row = next((r for r in rows if r["name"] == mod), {"parent": "", "kind": "", "level": ""})
     elif hier_signals(root):
@@ -260,17 +265,17 @@ def check(stage, mod, level_arg, root, skill_dir, fmt="mermaid"):
         miss.append("Phát hiện thiết kế phân cấp (" + "; ".join(hier_signals(root)) + ") nhưng thiếu "
                     "doc/spec/spec_status.md – chạy /rtl-s1-spec để khởi tạo/cập nhật hierarchy")
         lv = header_field(sp, "Level").upper() if sp else ""
-        row = {"parent": header_field(sp, "Cha") if sp else "",
-               "kind": header_field(sp, "Loại").lower() if sp else "", "level": lv if lv in LEVELS else ""}
+        row = {"parent": header_field(sp, K_PARENT) if sp else "",
+               "kind": header_field(sp, K_TYPE).lower() if sp else "", "level": lv if lv in LEVELS else ""}
     else:
         info.append("chế độ: đơn (không có spec_status.md)")
-        st = header_field(sp, "Trạng thái").upper() if sp else ""
+        st = header_field(sp, K_STATUS).upper() if sp else ""
         if sp:
-            need(st == "PASS", f"{rel(root, sp)}: Trạng thái = PASS",
-                 f"{rel(root, sp)}: Trạng thái = {st or 'không ghi'} – chạy /rtl-s1-spec để chốt "
-                 "(dòng 'Loại: … · Level: … · Trạng thái: PASS')")
+            need(st == "PASS", f"{rel(root, sp)}: Status = PASS",
+                 f"{rel(root, sp)}: Status = {st or 'không ghi'} – chạy /rtl-s1-spec để chốt "
+                 "(dòng 'Type: … · Level: … · Status: PASS')")
         lv = header_field(sp, "Level").upper() if sp else ""
-        row = {"parent": "", "kind": header_field(sp, "Loại").lower() if sp else "",
+        row = {"parent": "", "kind": header_field(sp, K_TYPE).lower() if sp else "",
                "level": lv if lv in LEVELS else ""}
 
     need(sp is not None, f"spec: {rel(root, sp) if sp else ''}",
@@ -278,7 +283,7 @@ def check(stage, mod, level_arg, root, skill_dir, fmt="mermaid"):
          + ("" if sf or not names else f" – module hiện có: {', '.join(names)}"))
     itf = interface_file(root, mod)
     need(itf is not None, f"bảng port: {rel(root, itf) if itf else ''}",
-         f"không tìm thấy bảng port (cột 'Tên port') của `{mod}` trong spec hay interface/{mod}_interface.md")
+         f"không tìm thấy bảng port (cột 'Port name') của `{mod}` trong spec hay interface/{mod}_interface.md")
 
     kids = [r["name"] for r in rows if r["parent"] == mod]
     info.append(f"loại: {row['kind'] or '?'} · cha: {row['parent'] or '–'} · "

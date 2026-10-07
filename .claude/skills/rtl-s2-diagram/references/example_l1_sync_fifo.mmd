@@ -1,8 +1,8 @@
 %% module : sync_fifo
 %% stage  : 2 - diagram L1 (microarchitecture)
-%% nguon  : doc/spec/sync_fifo_spec.md
+%% source : doc/spec/sync_fifo_spec.md
 %% param  : DATA_W=8, DEPTH=16, AW=4
-%% mo tren: https://mermaid.live
+%% open in: https://mermaid.live
 flowchart LR
 
   %% ===== INPUT PORTS =====
@@ -19,14 +19,14 @@ flowchart LR
 
   subgraph M_sync_fifo["sync_fifo"]
     direction LR
-    n_clkrst["clk_i rising / rst_n_i async low<br/>den moi thanh ghi"]
+    n_clkrst["clk_i rising / rst_n_i async low<br/>to every register"]
     blk_hs["HANDSHAKE<br/>wr_en = wr_valid_i AND NOT full<br/>rd_en = rd_ready_i AND NOT empty"]
-    reg_mem["REG ARRAY mem_q [16][7:0]<br/>ghi mem_q[wr_ptr_q] khi wr_en<br/>khong reset"]
-    reg_wptr["REG wr_ptr_q [3:0]<br/>+1 khi wr_en, rst = 0"]
-    reg_rptr["REG rd_ptr_q [3:0]<br/>+1 khi rd_en, rst = 0"]
-    reg_cnt["REG count_q [4:0]<br/>+1 / −1 / giu theo wr_en, rd_en<br/>rst = 0"]
+    reg_mem["REG ARRAY mem_q [16][7:0]<br/>write mem_q[wr_ptr_q] when wr_en<br/>no reset"]
+    reg_wptr["REG wr_ptr_q [3:0]<br/>+1 when wr_en, rst = 0"]
+    reg_rptr["REG rd_ptr_q [3:0]<br/>+1 when rd_en, rst = 0"]
+    reg_cnt["REG count_q [4:0]<br/>+1 / −1 / hold by wr_en, rd_en<br/>rst = 0"]
     blk_flag["FLAGS<br/>full = count_q = 16<br/>empty = count_q = 0"]
-    mux_rd[/"MUX16 sel=rd_ptr_q<br/>doc mem_q"\]
+    mux_rd[/"MUX16 sel=rd_ptr_q<br/>read mem_q"\]
   end
 
   %% ===== DATA =====

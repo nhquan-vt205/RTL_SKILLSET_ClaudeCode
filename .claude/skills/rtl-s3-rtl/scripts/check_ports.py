@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-So sánh port list của file RTL Verilog-2005 (khai báo kiểu ANSI) với bảng port (cột "Tên port") trong spec.
+So sánh port list của file RTL Verilog-2005 (khai báo kiểu ANSI) với bảng port (cột "Port name", bản cũ "Tên port") trong spec.
 
 Dùng: python3 check_ports.py rtl/<m>.v <file bảng port>
   <file bảng port>: doc/spec/<m>_spec.md, architecture/<m>_spec.md hoặc interface/<m>_interface.md
@@ -97,21 +97,21 @@ def iface(path):
             continue
         cells = [re.sub(r"[`*]", "", c).strip() for c in line.strip().strip("|").split("|")]
         if header is None:
-            if any(c.lower().startswith("tên port") for c in cells):
+            if any(c.lower().startswith(("port name", "tên port")) for c in cells):
                 header = [c.lower() for c in cells]
             continue
         if set("".join(cells)) <= set("-: "):
             continue
 
-        def col(n):
+        def col(*names):
             for i, h in enumerate(header):
-                if h.startswith(n) and i < len(cells):
+                if h.startswith(names) and i < len(cells):
                     return cells[i]
             return ""
         w = col("giá trị số") or col("bit width") or col("width")
         m = re.search(r"\(\s*(\d+)\s*\)", w)
-        if col("tên port"):
-            out.append((col("tên port"), col("hướng").lower(),
+        if col("port name", "tên port"):
+            out.append((col("port name", "tên port"), col("direction", "hướng").lower(),
                         int(w) if w.isdigit() else int(m.group(1)) if m else None))
     return out
 
@@ -124,7 +124,7 @@ def main():
     mod, r = rtl_ports(sys.argv[1])
     s = iface(sys.argv[2])
     if not s:
-        sys.exit(f"{sys.argv[2]}: không có bảng port (cột 'Tên port')")
+        sys.exit(f"{sys.argv[2]}: không có bảng port (cột 'Port name')")
     rd = {p[0]: p for p in r}
     sd = {p[0]: p for p in s}
     errs, warns = [], []

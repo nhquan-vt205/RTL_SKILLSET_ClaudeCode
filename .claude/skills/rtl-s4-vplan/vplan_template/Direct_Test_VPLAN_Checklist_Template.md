@@ -64,6 +64,7 @@ Each test item should be:
 2. Deterministic with an objective PASS/FAIL condition.
 3. Traceable to a functional requirement or design behavior when useful. Formal REQ IDs are not mandatory for very small designs.
 4. Sufficiently concrete that another engineer can reproduce the test without interpretation.
+5. Written in English in every checklist cell (item, sub items, test sequence, pass condition), with a short, distinguishable item name – S5 prints the item name in the simulation log.
 
 The direct-test VPLAN should cover the DUT's **major specified functional behaviors** and important boundary/exception cases relevant to the project scope.
 

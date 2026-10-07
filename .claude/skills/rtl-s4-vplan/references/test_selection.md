@@ -27,24 +27,30 @@ Phép tính phức tạp (lọc, nhân ma trận…): tính kết quả mong đ�
 
 ## Viết kết quả mong đợi
 
-- Theo chu kỳ: "chu kỳ thứ 3 sau `start_i`=1: `done_o`=1 đúng 1 chu kỳ, `result_o`=0x01F4".
+Kết quả mong đợi thuộc checklist nên viết bằng tiếng Anh:
+
+- Theo chu kỳ: "cycle 3 after `start_i`=1: `done_o`=1 for exactly 1 cycle, `result_o`=0x01F4".
 - Kèm phép tính ngắn: `acc = 3 × 0x7FFF = 0x17FFD`.
 
 ## Định dạng mặc định (khi vplan_template/ trống)
 
+Heading `### TC_<M>_NNN – <short name>` và các dòng trường của test là checklist → chỉ tiếng Anh (S5 lấy tên sau ID làm `-- <short name> test --`). Đoạn mô tả tùy chọn (mục đích, phạm vi, lý do chức năng chưa phủ): tiếng Anh trước + bản dịch `_VI:_`. Bảng chỉ tiếng Anh.
+
 ```markdown
 # <m> – Vplan
-DUT: `<m>` · Phạm vi: leaf | tích hợp (<các module con>) · Cấu hình: DATA_W=16, ...
+DUT: `<m>` · Scope: leaf | integration (<submodules>) · Configuration: DATA_W=16, ...
 
-## Test
-### TC_<M>_001 – <tên ngắn>
-- Mục tiêu: ... · Chức năng: <mục spec> (REQ-xxx nếu spec có)
-- Điều kiện đầu: sau reset
+## Tests
+### TC_<M>_001 – <short name>
+- Objective: ... · Function: <spec section> (REQ-xxx if the spec has them)
+- Initial condition: after reset
 - Stimulus: c0: ...; c1: ...
-- Mong đợi: c3: `result_o` = 0x... (= phép tính)
-- PASS khi: mọi giá trị mong đợi khớp
+- Expected: c3: `result_o` = 0x... (= calculation)
+- PASS when: every expected value matches
 
-## Phủ chức năng
-| Chức năng | Test |
+## Function coverage
+| Function | Test |
 | --- | --- |
 ```
+
+Đúng: `### TC_PULSE_CNT_001 – Reset value check` → log S5 `-- Reset value check test --`. Sai: `### TC_PULSE_CNT_001 – Kiểm tra giá trị reset`.

@@ -85,7 +85,7 @@ def parse_model(text):
     for raw in text.splitlines():
         s = raw.strip()
         if s.startswith("%%"):
-            m = re.match(r"%%\s*(module|stage|nguon|param)\s*:\s*(.*)$", s, re.I)
+            m = re.match(r"%%\s*(module|stage|source|nguon|param)\s*:\s*(.*)$", s, re.I)
             if m:
                 meta.setdefault(m.group(1).lower(), m.group(2).strip())
             continue
@@ -112,7 +112,7 @@ def parse_model(text):
             groups.append(dst)
     lv = re.search(r"\bL([012])\b", meta.get("stage", ""))
     return {"module": meta.get("module", sub).split()[0] if meta.get("module", sub) else "",
-            "level": f"L{lv.group(1)}" if lv else "", "source": meta.get("nguon", ""),
+            "level": f"L{lv.group(1)}" if lv else "", "source": meta.get("source", meta.get("nguon", "")),
             "param": meta.get("param", ""), "nodes": list(nodes.values()), "edges": edges}
 
 
@@ -136,13 +136,13 @@ def iface_table(md):
             continue
         cells = [re.sub(r"[`*]", "", c).strip() for c in line.strip().strip("|").split("|")]
         if header is None:
-            if any(c.lower().startswith("tên port") for c in cells):
+            if any(c.lower().startswith(("port name", "tên port")) for c in cells):
                 header = [c.lower() for c in cells]
             continue
         if set("".join(cells)) <= set("-: "):
             continue
         col = lambda *names: next((i for i, h in enumerate(header) if h.startswith(names)), None)  # noqa: E731
-        i_n, i_d, i_w = col("tên port"), col("hướng", "dir"), col("width", "độ rộng")
+        i_n, i_d, i_w = col("port name", "tên port"), col("direction", "hướng", "dir"), col("width", "độ rộng")
         name = cells[i_n] if i_n is not None and i_n < len(cells) else ""
         if not re.fullmatch(r"[A-Za-z_]\w*", name):
             continue
@@ -1532,7 +1532,7 @@ def svg_of(model, nl, lay):
     for k, ss in segs.items():
         net = nets[k]
         cls = {"clk": "clkn", "ctrl": "ctrl", "data": "data"}[net["cls"]] + (" bus" if net["w"] > 1 else "")
-        name = (net["name"] or "") + wtxt(net["w"]) or "(net nội bộ)"
+        name = (net["name"] or "") + wtxt(net["w"]) or "(internal net)"
         out.append(f'<g class="net {cls}" data-net="{k}"><title>{esc(name)}</title>')
         for d, arrow in ss:
             out.append(f'<path class="hit" d="{d}"/><path class="w" d="{d}"'
@@ -1547,7 +1547,7 @@ def svg_of(model, nl, lay):
         out.append(node_svg(N[v], g, X(g["x"]), Y(g["y"])))
     for x0, y0, w, lab, n in consts:
         tip = f"{n['label']} = {n['value']}" if n["label"] != n["value"] else n["label"]
-        out.append(f'<g class="node t-const" data-g="{esc(n["g"])}"><title>{esc(n["g"])} · hằng {esc(tip)}'
+        out.append(f'<g class="node t-const" data-g="{esc(n["g"])}"><title>{esc(n["g"])} · constant {esc(tip)}'
                    f'</title><rect class="shape" x="{f1(X(x0))}" y="{f1(Y(y0))}" width="{f1(w)}" height="16" '
                    f'rx="2"/>{text(X(x0) + w / 2, Y(y0) + 11.5, lab, "cst", "middle")}</g>')
     for xx, yy, s, k, anchor in labels:
@@ -1759,15 +1759,15 @@ window.addEventListener('resize',fit);fit();})();
 
 LEGEND = (
     '<span class="lg"><svg width="26" height="10"><path d="M0,5H26" stroke="var(--wire)" stroke-width="1.2"/></svg>'
-    'dữ liệu 1 bit</span>'
+    '1-bit data</span>'
     '<span class="lg"><svg width="26" height="10"><path d="M0,5H26" stroke="var(--wire)" stroke-width="2.6"/></svg>'
     'bus</span>'
     '<span class="lg"><svg width="26" height="10"><path d="M0,5H26" stroke="var(--ctrl)" stroke-width="1.2" '
-    'stroke-dasharray="5 3"/></svg>điều khiển</span>'
+    'stroke-dasharray="5 3"/></svg>control</span>'
     '<span class="lg"><svg width="26" height="10"><path d="M0,5H26" stroke="var(--clk)" stroke-width="1.2" '
     'stroke-dasharray="9 3 2 3"/></svg>clock/reset</span>'
     '<span class="lg"><svg width="12" height="10"><circle cx="6" cy="5" r="3" fill="var(--wire)"/></svg>'
-    'điểm nối</span>')
+    'junction</span>')
 
 
 def html_of(model, nl, detail, origin):
@@ -1776,7 +1776,7 @@ def html_of(model, nl, detail, origin):
     m = model["module"]
     blob = json.dumps(dict(model, detail=detail), ensure_ascii=False, indent=1).replace("</", "<\\/")
     cnt = Counter(n["t"] for n in nl.nodes.values())
-    names = {"dff": "DFF", "mux": "MUX", "cmp": "CMP", "gate": "cổng", "arith": "phép toán", "const": "hằng",
+    names = {"dff": "DFF", "mux": "MUX", "cmp": "CMP", "gate": "gate", "arith": "arith", "const": "const",
              "concat": "concat", "mem": "MEM"}
     summary = " · ".join(f"{cnt[k]} {v}" for k, v in names.items() if cnt[k])
     per = defaultdict(Counter)
@@ -1791,10 +1791,10 @@ def html_of(model, nl, detail, origin):
                    for n in inner)
     notes = "".join(f"<li>{esc(' / '.join(lines_of(n['label'])))}</li>" for n in model["nodes"]
                     if n["kind"] == "note")
-    src = f" · nguồn: {esc(model['source'])}" if model["source"] else ""
+    src = f" · source: {esc(model['source'])}" if model["source"] else ""
     par = f" · param: {esc(model['param'])}" if model["param"] else ""
     return f"""<!DOCTYPE html>
-<html lang="vi" data-module="{esc(m)}" data-stage="2" data-level="{esc(model['level'])}" data-format="html">
+<html lang="en" data-module="{esc(m)}" data-stage="2" data-level="{esc(model['level'])}" data-format="html">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1805,20 +1805,20 @@ def html_of(model, nl, detail, origin):
 <body>
 <header>
 <h1>{esc(m)}</h1>
-<div class="meta">S2 · {esc(model['level'])} · RTL schematic (HTML) · {summary}<br>mô hình: {esc(origin)}{src}{par}
-· bản xem trực quan – diagram chính thức cho S3 là <code>{esc(m)}.mmd</code></div>
+<div class="meta">S2 · {esc(model['level'])} · RTL schematic (HTML) · {summary}<br>model: {esc(origin)}{src}{par}
+· viewing aid – the official diagram for S3 is <code>{esc(m)}.mmd</code></div>
 </header>
-<div class="bar"><button id="zo" title="Thu nhỏ">−</button><span id="zv">100%</span>
-<button id="zi" title="Phóng to">+</button><button id="z1">1:1</button><button id="zf">Vừa khung</button>
-{LEGEND}<span>· lăn chuột: zoom · kéo: di chuyển · rê lên phần tử: sáng khối mô hình · nhấp dây: tô net</span></div>
-<div class="chips">Khối mô hình: {chips}</div>
+<div class="bar"><button id="zo" title="Zoom out">−</button><span id="zv">100%</span>
+<button id="zi" title="Zoom in">+</button><button id="z1">1:1</button><button id="zf">Fit</button>
+{LEGEND}<span>· wheel: zoom · drag: pan · hover element: highlight model block · click wire: highlight net</span></div>
+<div class="chips">Model blocks: {chips}</div>
 <div id="view">{svg}</div>
 <div class="info">
-<details><summary>Khối mô hình ↔ phần tử schematic ({len(inner)} khối, {len(model['edges'])} cạnh)</summary>
-<table><tr><th>khối (.mmd)</th><th>nhãn</th><th>phần tử trong schematic</th></tr>{rows}</table>
+<details><summary>Model blocks ↔ schematic elements ({len(inner)} blocks, {len(model['edges'])} edges)</summary>
+<table><tr><th>Block (.mmd)</th><th>Label</th><th>Schematic elements</th></tr>{rows}</table>
 {f"<ul>{notes}</ul>" if notes else ""}
 </details>
-<details><summary>Lớp chi tiết RTL</summary><pre>{esc(detail.strip())}</pre></details>
+<details><summary>RTL detail layer</summary><pre>{esc(detail.strip())}</pre></details>
 </div>
 <script type="application/json" id="arch-model">{blob}</script>
 <script>{JS}</script>
@@ -1907,7 +1907,7 @@ def main():
         text = Path(a.model).read_text(encoding="utf-8")
         detail = stdin if a.detail == "-" else Path(a.detail).read_text(encoding="utf-8") if a.detail else ""
         detail = split_stdin(detail)[1] if SCH_MARK.search(detail) else detail
-    origin = "stdin (chưa có .mmd)" if a.model == "-" else Path(a.model).as_posix()
+    origin = "stdin (no .mmd yet)" if a.model == "-" else Path(a.model).as_posix()
     model = parse_model(text)
     m = model["module"]
     errs, warns = lint(text.splitlines(), iface_ports(Path(a.interface)) if a.interface else None)
