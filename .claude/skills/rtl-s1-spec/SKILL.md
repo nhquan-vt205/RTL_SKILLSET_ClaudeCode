@@ -66,9 +66,9 @@ Theo mục 2 của `references/process.md`:
 
 | Module | Level |
 | --- | --- |
-| Có module con, logic riêng chủ yếu là nối dây | `L0` – khối + nối dây |
-| Leaf nhỏ: counter, FSM, FIFO nhỏ, APB slave ít thanh ghi, ALU đơn giản | `L2` – phác thảo hướng RTL |
-| Leaf lớn / cấu trúc lặp: mảng thanh ghi/bộ nhớ, pipeline, mảng PE/MAC, DMA channel; block có module con **và** nhiều logic riêng | `L1` – vi kiến trúc |
+| Có module con, logic riêng chủ yếu là nối dây | `L0` – khối module con + glue logic tới từng gate |
+| Leaf nhỏ: counter, FSM, FIFO nhỏ, APB slave ít thanh ghi, ALU đơn giản | `L2` – toàn bộ tới từng gate |
+| Leaf lớn / cấu trúc lặp: mảng thanh ghi/bộ nhớ, pipeline, mảng PE/MAC, DMA channel; block có module con **và** nhiều logic riêng | `L1` – tới từng gate, gom phần được duyệt thành cloud/khối |
 
 Chế độ phân cấp: ghi ngay `spec_status.md` (định dạng ở Bước 5) với `STATUS: FAIL` – script kiểm interface cần bảng module để biết quan hệ cha–con.
 

@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1860" height="790" viewBox="0 0 1860 790"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- S2 symbol library: every symbol shown at its reference size, origin = top-left of the
+       group (translate). Geometry, pins and scaling rules: diagram_conventions.md section 3. -->
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+    .cap{font-size:12px;font-style:italic}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  <g id="sym_and" transform="translate(60,50)">
+    <path class="s" d="M0,0 H30 A25,25 0 0 1 30,50 H0 Z"/>
+    <line class="w" x1="-30" y1="15" x2="0" y2="15"/>
+    <line class="w" x1="-30" y1="35" x2="0" y2="35"/>
+    <line class="w" x1="55" y1="25" x2="85" y2="25"/>
+  </g>
+  <text class="cap" x="87" y="140" text-anchor="middle">AND  gate_</text>
+  <g id="sym_nand" transform="translate(265,50)">
+    <path class="s" d="M0,0 H30 A25,25 0 0 1 30,50 H0 Z"/>
+    <circle class="s" cx="59" cy="25" r="4"/>
+    <line class="w" x1="-30" y1="15" x2="0" y2="15"/>
+    <line class="w" x1="-30" y1="35" x2="0" y2="35"/>
+    <line class="w" x1="63" y1="25" x2="90" y2="25"/>
+  </g>
+  <text class="cap" x="295" y="140" text-anchor="middle">NAND  gate_</text>
+  <g id="sym_or" transform="translate(470,50)">
+    <path class="s" d="M0,0 Q40,0 70,25 Q40,50 0,50 Q14,25 0,0 Z"/>
+    <line class="w" x1="-30" y1="15" x2="5.9" y2="15"/>
+    <line class="w" x1="-30" y1="35" x2="5.9" y2="35"/>
+    <line class="w" x1="70" y1="25" x2="95" y2="25"/>
+  </g>
+  <text class="cap" x="505" y="140" text-anchor="middle">OR  gate_</text>
+  <g id="sym_nor" transform="translate(680,50)">
+    <path class="s" d="M0,0 Q40,0 70,25 Q40,50 0,50 Q14,25 0,0 Z"/>
+    <circle class="s" cx="74" cy="25" r="4"/>
+    <line class="w" x1="-30" y1="15" x2="5.9" y2="15"/>
+    <line class="w" x1="-30" y1="35" x2="5.9" y2="35"/>
+    <line class="w" x1="78" y1="25" x2="100" y2="25"/>
+  </g>
+  <text class="cap" x="717" y="140" text-anchor="middle">NOR  gate_</text>
+  <g id="sym_xor" transform="translate(890,50)">
+    <path class="s" d="M8,0 Q48,0 78,25 Q48,50 8,50 Q22,25 8,0 Z"/>
+    <path class="w" d="M0,0 Q14,25 0,50"/>
+    <line class="w" x1="-30" y1="15" x2="5.9" y2="15"/>
+    <line class="w" x1="-30" y1="35" x2="5.9" y2="35"/>
+    <line class="w" x1="78" y1="25" x2="100" y2="25"/>
+  </g>
+  <text class="cap" x="929" y="140" text-anchor="middle">XOR  gate_</text>
+  <g id="sym_xnor" transform="translate(1100,50)">
+    <path class="s" d="M8,0 Q48,0 78,25 Q48,50 8,50 Q22,25 8,0 Z"/>
+    <path class="w" d="M0,0 Q14,25 0,50"/>
+    <circle class="s" cx="82" cy="25" r="4"/>
+    <line class="w" x1="-30" y1="15" x2="5.9" y2="15"/>
+    <line class="w" x1="-30" y1="35" x2="5.9" y2="35"/>
+    <line class="w" x1="86" y1="25" x2="108" y2="25"/>
+  </g>
+  <text class="cap" x="1143" y="140" text-anchor="middle">XNOR  gate_</text>
+  <g id="sym_not" transform="translate(1315,60)">
+    <path class="s" d="M0,0 L30,15 L0,30 Z"/>
+    <circle class="s" cx="34" cy="15" r="4"/>
+    <line class="w" x1="-30" y1="15" x2="0" y2="15"/>
+    <line class="w" x1="38" y1="15" x2="65" y2="15"/>
+  </g>
+  <text class="cap" x="1332" y="140" text-anchor="middle">NOT (standalone)  gate_</text>
+  <g id="sym_and_inv" transform="translate(1490,50)">
+    <path class="s" d="M0,0 H30 A25,25 0 0 1 30,50 H0 Z"/>
+    <circle class="s" cx="-4" cy="15" r="4"/>
+    <line class="w" x1="-30" y1="15" x2="-8" y2="15"/>
+    <line class="w" x1="-30" y1="35" x2="0" y2="35"/>
+    <line class="w" x1="55" y1="25" x2="80" y2="25"/>
+  </g>
+  <text class="cap" x="1510" y="140" text-anchor="middle">inverted input (bubble)</text>
+  <g id="sym_mux2" transform="translate(60,270)">
+    <path class="s" d="M0,0 L30,15 L30,55 L0,70 Z"/>
+    <text x="5" y="28">0</text>
+    <text x="5" y="58">1</text>
+    <line class="w" x1="-30" y1="24" x2="0" y2="24"/>
+    <line class="w" x1="-30" y1="54" x2="0" y2="54"/>
+    <line class="w" x1="30" y1="35" x2="60" y2="35"/>
+    <line class="w" x1="15" y1="62.5" x2="15" y2="95"/>
+    <text x="20" y="92">sel</text>
+  </g>
+  <text class="cap" x="75" y="470" text-anchor="middle">MUX 2:1  mux_</text>
+  <g id="sym_muxn" transform="translate(250,230)">
+    <path class="s" d="M0,0 L60,40 L60,160 L0,200 Z"/>
+    <text x="6" y="44">0x0</text>
+    <text x="6" y="84">0x4</text>
+    <text x="6" y="124">0x8</text>
+    <text x="6" y="164">......</text>
+    <line class="w" x1="-30" y1="40" x2="0" y2="40"/>
+    <line class="w" x1="-30" y1="80" x2="0" y2="80"/>
+    <line class="w" x1="-30" y1="120" x2="0" y2="120"/>
+    <line class="w" x1="-30" y1="160" x2="0" y2="160"/>
+    <line class="w" x1="60" y1="100" x2="90" y2="100"/>
+    <line class="w" x1="30" y1="180" x2="30" y2="215"/>
+    <text x="36" y="212">addr[11:2]</text>
+  </g>
+  <text class="cap" x="280" y="470" text-anchor="middle">MUX N:1 (case labels)  mux_</text>
+  <g id="sym_reg1" transform="translate(465,250)">
+    <rect class="s" x="0" y="0" width="70" height="110"/>
+    <path class="w" d="M0,80 L14,90 L0,100"/>
+    <circle class="s" cx="35" cy="115" r="5"/>
+    <text x="35" y="137" text-anchor="middle">rst_n_i</text>
+    <text x="35" y="59" text-anchor="middle">TIM_EN</text>
+    <line class="w" x1="-30" y1="55" x2="0" y2="55"/>
+    <line class="w" x1="70" y1="55" x2="100" y2="55"/>
+  </g>
+  <text class="cap" x="500" y="470" text-anchor="middle">register 1 bit  reg_</text>
+  <g id="sym_regn" transform="translate(655,250)">
+    <rect class="s" x="6" y="-6" width="70" height="110"/>
+    <rect class="s" x="0" y="0" width="70" height="110"/>
+    <path class="w" d="M0,80 L14,90 L0,100"/>
+    <circle class="s" cx="35" cy="115" r="5"/>
+    <text x="35" y="137" text-anchor="middle">rst_n_i</text>
+    <text x="35" y="50" text-anchor="middle">DIV_VAL</text>
+    <text x="35" y="66" text-anchor="middle">[3:0]</text>
+    <line class="w" x1="-30" y1="55" x2="0" y2="55"/>
+    <line class="w" x1="76" y1="55" x2="106" y2="55"/>
+  </g>
+  <text class="cap" x="693" y="470" text-anchor="middle">register n bit  reg_</text>
+  <g id="sym_regnr" transform="translate(850,250)">
+    <rect class="s" x="0" y="0" width="70" height="110"/>
+    <path class="w" d="M0,80 L14,90 L0,100"/>
+    <line class="w" x1="-30" y1="55" x2="0" y2="55"/>
+    <line class="w" x1="70" y1="55" x2="100" y2="55"/>
+  </g>
+  <text class="cap" x="885" y="470" text-anchor="middle">FF, no reset / internal  reg_</text>
+  <g id="sym_mem" transform="translate(1080,240)">
+    <rect class="s" x="0" y="0" width="150" height="160"/>
+    <path class="w" d="M0,130 L14,140 L0,150"/>
+    <text x="75" y="62" text-anchor="middle">mem_q</text>
+    <text x="75" y="80" text-anchor="middle">16 x 8</text>
+    <text x="75" y="98" text-anchor="middle">0x000 - 0x03C</text>
+    <line class="w" x1="-40" y1="30" x2="0" y2="30"/>
+    <text x="-4" y="26" text-anchor="end">WE</text>
+    <line class="w" x1="-40" y1="60" x2="0" y2="60"/>
+    <text x="-4" y="56" text-anchor="end">WA[3:0]</text>
+    <line class="w" x1="-40" y1="90" x2="0" y2="90"/>
+    <text x="-4" y="86" text-anchor="end">WD[7:0]</text>
+    <line class="w" x1="-40" y1="120" x2="0" y2="120"/>
+    <text x="-4" y="116" text-anchor="end">RA[3:0]</text>
+    <line class="w" x1="150" y1="75" x2="195" y2="75"/>
+    <text x="154" y="71">RD[7:0]</text>
+  </g>
+  <text class="cap" x="1155" y="470" text-anchor="middle">memory / register array  mem_</text>
+  <g id="sym_inst" transform="translate(1370,240)">
+    <rect class="s" x="0" y="0" width="130" height="160"/>
+    <text x="65" y="76" text-anchor="middle">u_eng</text>
+    <text x="65" y="94" text-anchor="middle">dma_engine</text>
+    <line class="w" x1="-45" y1="30" x2="0" y2="30"/>
+    <text x="-4" y="26" text-anchor="end">start_i</text>
+    <line class="w" x1="-45" y1="70" x2="0" y2="70"/>
+    <text x="-4" y="66" text-anchor="end">src_i[31:0]</text>
+    <line class="w" x1="-45" y1="110" x2="0" y2="110"/>
+    <text x="-4" y="106" text-anchor="end">len_i[15:0]</text>
+    <line class="w" x1="130" y1="40" x2="175" y2="40"/>
+    <text x="134" y="36">busy_o</text>
+    <line class="w" x1="130" y1="120" x2="175" y2="120"/>
+    <text x="134" y="116">done_o</text>
+  </g>
+  <text class="cap" x="1435" y="470" text-anchor="middle">submodule block  u_ / blk_</text>
+  <g id="sym_inst_array" transform="translate(1630,240)">
+    <rect class="s" x="6" y="-6" width="130" height="160"/>
+    <rect class="s" x="0" y="0" width="130" height="160"/>
+    <text x="65" y="67" text-anchor="middle">u_lane</text>
+    <text x="65" y="85" text-anchor="middle">mac_lane</text>
+    <text x="65" y="103" text-anchor="middle">x 4</text>
+    <line class="w" x1="-45" y1="50" x2="0" y2="50"/>
+    <text x="-4" y="46" text-anchor="end">a_i[7:0]</text>
+    <line class="w" x1="-45" y1="110" x2="0" y2="110"/>
+    <text x="-4" y="106" text-anchor="end">b_i[7:0]</text>
+    <line class="w" x1="136" y1="80" x2="181" y2="80"/>
+    <text x="140" y="76">p_o[15:0]</text>
+  </g>
+  <text class="cap" x="1698" y="470" text-anchor="middle">instance array (generate)  u_</text>
+  <g id="sym_op" transform="translate(60,600)">
+    <ellipse class="s" cx="45" cy="22" rx="45" ry="22"/>
+    <text x="45" y="27" text-anchor="middle">== ?</text>
+    <line class="w" x1="-30" y1="12" x2="4.9" y2="12"/>
+    <line class="w" x1="-30" y1="32" x2="4.9" y2="32"/>
+    <line class="w" x1="90" y1="22" x2="120" y2="22"/>
+  </g>
+  <text class="cap" x="105" y="750" text-anchor="middle">operator / compare  op_</text>
+  <g id="sym_cloud" transform="translate(340,570)">
+    <path class="s" d="M20,60 a18,18 0 0 1 -2,-34 a22,22 0 0 1 38,-14 a22,22 0 0 1 40,2 a20,20 0 0 1 22,30 a18,18 0 0 1 -18,28 a22,22 0 0 1 -38,4 a22,22 0 0 1 -42,-16 Z"/>
+    <line class="w" x1="-90" y1="45" x2="0.5" y2="45"/>
+    <text x="-86" y="39">div_val[3:0]</text>
+    <line class="w" x1="122" y1="45" x2="165" y2="45"/>
+    <text x="126" y="39">limit[7:0]</text>
+  </g>
+  <text class="cap" x="400" y="750" text-anchor="middle">cloud (abstracted logic)  cloud_</text>
+  <g id="sym_bus" transform="translate(610,560)">
+    <rect class="s" x="0" y="0" width="25" height="130"/>
+    <text x="12.5" y="-8" text-anchor="middle">TCR[31:0]</text>
+    <line class="w" x1="-50" y1="25" x2="0" y2="25"/>
+    <text x="-46" y="20">[0]</text>
+    <line class="w" x1="-50" y1="55" x2="0" y2="55"/>
+    <text x="-46" y="50">[1]</text>
+    <line class="w" x1="-50" y1="85" x2="0" y2="85"/>
+    <text x="-46" y="80">[11:8]</text>
+    <line class="w" x1="-50" y1="115" x2="0" y2="115"/>
+    <text x="-54" y="119" text-anchor="end">20'h0</text>
+    <line class="w" x1="25" y1="65" x2="70" y2="65"/>
+  </g>
+  <text class="cap" x="622" y="750" text-anchor="middle">bus bundle (concat)  bus_</text>
+  <g id="sym_split" transform="translate(820,560)">
+    <rect class="s" x="0" y="0" width="25" height="130"/>
+    <text x="12.5" y="-8" text-anchor="middle">wdata[31:0]</text>
+    <line class="w" x1="-45" y1="65" x2="0" y2="65"/>
+    <line class="w" x1="25" y1="25" x2="75" y2="25"/>
+    <text x="30" y="20">[0]</text>
+    <line class="w" x1="25" y1="65" x2="75" y2="65"/>
+    <text x="30" y="60">[1]</text>
+    <line class="w" x1="25" y1="105" x2="75" y2="105"/>
+    <text x="30" y="100">[11:8]</text>
+  </g>
+  <text class="cap" x="832" y="750" text-anchor="middle">bus split  bus_</text>
+  <g id="sym_junction" transform="translate(1000,580)">
+    <line class="w" x1="0" y1="30" x2="110" y2="30"/>
+    <circle class="dot" cx="45" cy="30" r="4"/>
+    <line class="w" x1="45" y1="30" x2="45" y2="90"/>
+    <line class="w" x1="0" y1="60" x2="110" y2="60"/>
+    <line class="w" x1="80" y1="0" x2="80" y2="90"/>
+  </g>
+  <text class="cap" x="1055" y="750" text-anchor="middle">dot = joined; crossing = not joined</text>
+  <g id="sym_const" transform="translate(1210,600)">
+    <text x="-5" y="24" text-anchor="end">32'h0</text>
+    <line class="w" x1="0" y1="20" x2="60" y2="20"/>
+    <text x="-5" y="64" text-anchor="end">1'b1</text>
+    <line class="w" x1="0" y1="60" x2="60" y2="60"/>
+  </g>
+  <text class="cap" x="1230" y="750" text-anchor="middle">constant = text at wire end</text>
+  <g id="sym_blk" transform="translate(1400,560)">
+    <rect class="s" x="0" y="0" width="110" height="130"/>
+    <text x="55" y="69" text-anchor="middle">addr_gen</text>
+    <line class="w" x1="-45" y1="35" x2="0" y2="35"/>
+    <text x="-4" y="31" text-anchor="end">base[31:0]</text>
+    <line class="w" x1="-45" y1="95" x2="0" y2="95"/>
+    <text x="-4" y="91" text-anchor="end">step</text>
+    <line class="w" x1="110" y1="65" x2="155" y2="65"/>
+    <text x="114" y="61">addr[31:0]</text>
+  </g>
+  <text class="cap" x="1455" y="750" text-anchor="middle">grouped block in a leaf  blk_</text>
+</svg>

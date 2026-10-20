@@ -1,112 +1,167 @@
-# Quy ước diagram Mermaid (stage 2, mọi level)
+# Quy ước diagram SVG (stage 2, mọi level)
 
-Mục lục: 1. Khung file · 2. Ký hiệu phần tử · 3. Cạnh · 4. Bố cục sạch · 5. Cú pháp an toàn · 6. Style · 7. Mẫu `<m>_notes.md` (tùy chọn) · 8. HTML schematic (leaf L2, tùy chọn)
+Mục lục: 1. Khung file · 2. Mức chi tiết theo level · 3. Bộ ký hiệu · 4. Dây, nhãn, bố cục · 5. Model `<desc>` · 6. Góc nhìn scope (`--from/--to`) · 7. Mẫu `<m>_notes.md` (tùy chọn)
 
-Mục tiêu: nhìn diagram hiểu kiến trúc và viết được RTL; dán vào https://mermaid.live là render (Mermaid v11, `flowchart`). Ví dụ đã parse thành công: `example_l0_dma_top.mmd`, `example_l1_sync_fifo.mmd`, `example_l2_acc_unit.mmd`.
-
-Diagram là mô hình kiến trúc, không phải netlist: một khối diagram có thể thành nhiều câu lệnh RTL, nhiều tín hiệu RTL có thể nằm trong một khối.
+Mục tiêu: nhìn diagram hiểu phần cứng và viết được RTL. Style là **sơ đồ logic đen trắng** theo hai ảnh mẫu của người dùng (MUX hình thang, FF chữ nhật + tam giác clock + bubble reset, gate AND/OR + bubble đảo, ellipse operator, cloud, bus bundle, junction dot). Thư viện ký hiệu: `symbol_library.svg` (mở bằng Chrome/Edge). Ví dụ đã qua lint: `example_l0_dma_top.svg`, `example_l1_sync_fifo.svg`, `example_l2_acc_unit.svg`.
 
 ## 1. Khung file
 
-```text
-%% module : <m>
-%% stage  : 2 - diagram L0 | L1 | L2      <- the S3 gate reads the level from this line
-%% source : <spec file used>
-%% param  : <parameter values used for widths>   (if any)
-%% open in: https://mermaid.live
-flowchart LR
-  %% ===== INPUT PORTS =====      outside the subgraph, left
-  %% ===== OUTPUT PORTS =====     outside the subgraph, right
-  subgraph M_<m>["<m>"]
-    direction LR
-    ... inner elements, in data-flow order ...
-  end
-  %% ===== DATA =====             solid edges
-  %% ===== CONTROL =====          dashed edges
-  %% ===== STYLE =====            classDef + class
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" width="W" height="H" viewBox="0 0 W H"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : <m> -->
+  <!-- stage  : 2 - diagram L0 | L1 | L2 -->           <- gate S1/S3 đọc level từ dòng này
+  <!-- source : <spec file used> -->
+  <!-- param  : <parameter values used for widths> -->  (nếu có)
+  <!-- scope  : from <a, b> to <x, y> -->               (chỉ file góc nhìn <m>_<part>.svg, mục 6)
+  <desc id="model"><![CDATA[
+  ... phương trình từng khối, mục 5 ...
+  ]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+  ... ký hiệu (<g id="reg_x">...</g>), dây, nhãn – theo thứ tự luồng dữ liệu ...
+</svg>
 ```
 
-Diagram chỉ dùng tiếng Anh: comment `%%` là tiếng Anh ASCII, mọi nhãn node/cạnh là tiếng Anh; không dùng tiếng Việt. (Diagram cũ có `%% nguon :` vẫn được script đọc.)
+- **Chỉ đen trắng**: nét `#000`, nền và fill `#fff`, chữ `#000`. Không màu, gradient, bóng, mũi tên, tiêu đề, legend, khung module.
+- Chỉ dùng `g path line rect circle ellipse text`. Không `<use>`/`<symbol>`/`<image>`/`<script>`/marker: mỗi ký hiệu chép thẳng hình từ mục 3, để file mở được bằng browser và chèn được vào Word/PPT/Inkscape.
+- Mọi chữ, comment và model chỉ dùng tiếng Anh ASCII (`>=`, `!=`, `x`; không `≥ ≠ ×`).
+- Canvas vừa nội dung, lề ~30px. Dịch cả sơ đồ thì bọc trong `<g transform="translate(dx,dy)">` (lint hiểu `translate`).
 
-## 2. Ký hiệu phần tử
+Mỗi ký hiệu là một nhóm `<g id="<tiền tố><tên>">` chứa hình và chữ bên trong của ký hiệu đó. Dây, junction dot, nhãn dây và tên port nằm ngoài nhóm.
 
-| Phần tử | Level | Tiền tố id | Cú pháp | Nhãn | class |
-| --- | --- | --- | --- | --- | --- |
-| Input port | mọi | `pi_` | `pi_din>"din_i [15:0]"]` | tên + `[msb:0]` | `port` |
-| Output port | mọi | `po_` | `po_acc(["acc_o [39:0]"])` | tên + `[msb:0]` | `port` |
-| Nhóm bus | mọi | `pi_`/`po_` | `pi_apb>"s_apb_* : APB4, ADDR 12, DATA 32"]` | `prefix_*` + giao thức | `port` |
-| Instance module con | L0, L1 | `u_` | `u_eng[["u_eng : dma_engine"]]` | `instance : module` | `inst` |
-| Mảng instance (generate) | L0, L1 | `gen_` | `gen_lane[["gen_lane × 4 : mac_lane"]]` | số bản sao | `inst` |
-| Thanh ghi / nhóm thanh ghi / mảng | mọi | `reg_` | `reg_cnt["count_q [2:0]<br/>rst = 0"]` | tên `_q`, width/kích thước, reset nếu có | `reg` |
-| FSM (thanh ghi trạng thái + next-state) | mọi | `fsm_` | `fsm_ctl["FSM state_q<br/>IDLE → RUN → DONE"]` | tên thanh ghi, trạng thái chính | `reg` |
-| Bộ nhớ (SRAM/RF macro) | L1, L2 | `mem_` | `mem_buf[("SRAM 256x16")]` | kích thước | `reg` |
-| Khối logic tổ hợp | mọi | `blk_` | `blk_nxt["NEXT COUNT<br/>clr: 0 ; en: +1"]` | chức năng + phương trình chính | `blk` |
-| MUX chọn dữ liệu chính | L1, L2 | `mux_` | `mux_sel[/"MUX sel=mode_q<br/>0: a ; 1: b"\]` | select, các ngõ | `mux` |
-| Phép toán là điểm chính kiến trúc | L1, L2 | `op_` | `op_mul(("×"))` | phép toán | `arith` |
-| Glue logic nhỏ ở mức tích hợp | L0 | `glue_` | `glue_irq["irq_o = irq_raw AND irq_en"]` | phương trình | `logic` |
-| Ghi chú | mọi | `n_` | `n_clkrst["..."]` | | `note` |
-
-`ff_` vẫn được chấp nhận như `reg_` (diagram cũ).
-
-**Gom, đừng tách.** Các thứ sau nằm trong nhãn của khối `blk_`/`reg_`, không thành node riêng: cổng AND/OR/NOT, hằng số, comparator nhỏ, mở rộng dấu, cắt bit, tín hiệu tạm, enable của thanh ghi. Tách thành node riêng chỉ khi nó định hình kiến trúc (bộ nhân dùng chung, MUX chọn nguồn dữ liệu, bộ so sánh quyết định luồng).
-
-Clock/reset: vẽ `clk_i`, `rst_n_i` như port, nối nét đứt tới **một** node `n_clkrst`, không kéo dây tới từng thanh ghi. Thanh ghi dùng clock/reset khác ghi rõ trong nhãn.
-
-## 3. Cạnh
-
-| Loại | Cú pháp | Nhãn |
+| Tiền tố | Phần tử | Mục `[id]` trong model |
 | --- | --- | --- |
-| Dữ liệu | `a -->|"sum [39:0]"| b` | tên tín hiệu + width |
-| Điều khiển (select, enable, clear, start, done) | `a -.->|"sel"| b` | tên hoặc vai trò tại đích |
-| Bus nhóm | `a -->|"m_mem_*"| b` | tên nhóm |
+| `reg_` | thanh ghi / FF (`fsm_` cho thanh ghi trạng thái FSM) | bắt buộc |
+| `mem_` | bộ nhớ, mảng thanh ghi | bắt buộc |
+| `mux_` | MUX 2:1, MUX N:1 | nên có |
+| `gate_` | AND, OR, XOR, NAND, NOR, XNOR, NOT | tùy chọn |
+| `op_` | ellipse operator (so sánh, số học) | nên có |
+| `bus_` | bus bundle / bus split | tùy chọn |
+| `cloud_` | logic gom thành cloud (người dùng đã duyệt) | bắt buộc |
+| `blk_` | khối gom trong leaf (người dùng đã duyệt) | bắt buộc |
+| `u_` | instance module con (L0, L1) | bắt buộc (port map) |
 
-Một nguồn tới nhiều đích → nhiều cạnh từ cùng node; không tạo node fan-out. Ở L0, nhãn cạnh dùng đúng tên net sẽ dùng trong RTL.
+## 2. Mức chi tiết theo level
 
-## 4. Bố cục sạch
+Level vẫn chọn như cũ (SKILL.md Bước 1); level quyết định phần nào **được phép** trừu tượng hóa. Phần không được trừu tượng hóa thì vẽ tới từng gate: mỗi thanh ghi một ô FF, mỗi enable/select một MUX, mỗi AND/OR/NOT/so sánh/phép toán một ký hiệu, hằng ghi tại đầu dây. Mảng bộ nhớ/thanh ghi luôn vẽ bằng ký hiệu `mem_` (mọi level).
 
-- `flowchart LR`; input bên trái, output bên phải; dữ liệu đi trái → phải.
-- Khai báo node theo thứ tự dòng dữ liệu – Mermaid xếp node theo thứ tự xuất hiện, nên khai báo đúng thứ tự giảm đường chéo.
-- Nhãn ngắn: tối đa 3 dòng `<br/>`.
-- Gom tín hiệu điều khiển cùng nguồn–đích vào một cạnh (`"wr_en, rd_en"`) thay vì nhiều cạnh song song.
-- L1 pipeline: mỗi tầng một `subgraph S1["Stage 1"]` lồng trong subgraph module.
-- Nhiều clock domain: mỗi domain một subgraph, điểm CDC là node riêng.
-- Diagram quá ~30–40 node thường là dấu hiệu đang vẽ quá chi tiết → gom trước khi nghĩ tới chia file.
+| Level | Vẽ tới từng gate | Được trừu tượng hóa |
+| --- | --- | --- |
+| **L2** – leaf nhỏ | toàn bộ module | không (`cloud_`/`blk_` chỉ khi người dùng yêu cầu rõ; không có `u_`) |
+| **L1** – leaf lớn (hoặc block có module con và nhiều logic riêng) | mọi phần còn lại | phần người dùng duyệt → `cloud_` hoặc `blk_`; module con (nếu có) → `u_` |
+| **L0** – có module con | glue logic | mỗi module con → `u_` (đủ port trừ clk/rst); phần glue người dùng duyệt → `cloud_` |
 
-## 5. Cú pháp an toàn (đã kiểm với parser Mermaid 11)
+**Đề xuất trừu tượng hóa (L1, L0) – người dùng duyệt trước khi vẽ.** Lệnh không có `--cloud`/`--block` → sau khi đọc spec, chia logic của module thành các phần theo chức năng và trình bày trong chat:
 
-- Mọi nhãn node và nhãn cạnh đặt trong nháy kép `"..."`. Trong nhãn không dùng `"` (thay `#quot;`) và không dùng `|` (dùng `;`).
-- Xuống dòng: `<br/>`. So sánh/toán tử dùng `≥ ≤ ≠ × −` thay vì `>= <= * -`.
-- id node: chữ, số, `_`; không trùng từ khóa (`end`, `subgraph`, `class`, `style`, `graph`, `flowchart`, `click`, `direction`); không bắt đầu bằng `o` hoặc `x`. Các tiền tố ở mục 2 đã tránh được.
-- Hình: MUX `[/"..."\]` · lục giác `{{"..."}}` · tròn `(("..."))` · stadium `(["..."])` · cờ `>"..."]` · subroutine `[["..."]]` · cylinder `[("...")]`.
-- Mỗi `subgraph` có `end` riêng một dòng. Không dùng cú pháp `@{ shape: ... }`.
+| Part | Signals in → out | Proposal | Reason |
+| --- | --- | --- | --- |
+| `ctrl` | `wr_valid_i, rd_ready_i` → `wr_en, rd_en, wr_ready_o, rd_valid_o` | `blk` | handshake + flags + counter, ~25 gates |
+| `wptr` | `wr_en` → `wr_ptr_q[3:0]` | `gate` | small, shows the pointer register |
 
-## 6. Style (copy nguyên khối, xóa class không dùng)
+Proposal là `gate`, `cloud` (logic tổ hợp/điều khiển chỉ cần biết vào–ra) hoặc `blk` (phần có cấu trúc rõ, cần thấy đủ tín hiệu vào–ra trên khung). **Dừng và chờ người dùng duyệt/sửa**; chỉ vẽ sau khi có câu trả lời. Có `--cloud a,b --block c` (tên phần) → dùng đúng lựa chọn đó, không hỏi; phần không nêu tên vẽ tới từng gate. Thanh ghi nằm trong phần bị gom không vẽ ô FF riêng nhưng phải có trong model của khối đó (mục 5).
+
+`blk_` trong leaf **chỉ là cách vẽ**: S3 vẫn viết phần đó trong cùng module, không tạo module mới. Phần cần thành module thật → báo người dùng tách ở S1.
+
+Lint cảnh báo khi quá ~60 primitive (`mux_`/`gate_`/`op_`/`reg_`): đề xuất người dùng gom thêm hoặc dùng góc nhìn scope (mục 6), không tự gom.
+
+## 3. Bộ ký hiệu
+
+Toạ độ là hình gốc tại (0,0), đặt bằng `<g id="..." transform="translate(x,y)">` hoặc cộng thẳng toạ độ. Tất cả: hình `class="s"` (fill trắng), nét `class="w"`, stroke 1.5. Hình mẫu trực quan: `symbol_library.svg` (id `sym_*`).
+
+| Ký hiệu | Hình gốc | Chân nối / quy cách |
+| --- | --- | --- |
+| **AND** | `<path class="s" d="M0,0 H30 A25,25 0 0 1 30,50 H0 Z"/>` | 2 input tại (0,15), (0,35); output (55,25). n input: cao `h` (input cách đều ≥ 20px), `M0,0 H30 A(h/2),(h/2) 0 0 1 30,h H0 Z`, output (30+h/2, h/2). |
+| **OR** | `<path class="s" d="M0,0 Q40,0 70,25 Q40,50 0,50 Q14,25 0,0 Z"/>` | output (70,25). Dây input chạm lưng cong: x = 28·(y/h)·(1−y/h) (h=50: y=15/35 → x≈5.9). Cao h: `M0,0 Q40,0 70,h/2 Q40,h 0,h Q14,h/2 0,0 Z`. |
+| **XOR** | `<path class="s" d="M8,0 Q48,0 78,25 Q48,50 8,50 Q22,25 8,0 Z"/>` + `<path class="w" d="M0,0 Q14,25 0,50"/>` | input chạm cung sau (x≈5.9 tại y=15/35), output (78,25). |
+| **NAND / NOR / XNOR** | AND / OR / XOR + bubble ở output | bubble `<circle class="s" r="4"/>` tâm cách mũi 4px: NAND (59,25) → output (63,25); NOR (74,25) → (78,25); XNOR (82,25) → (86,25). |
+| **Bubble đảo input** | `<circle class="s" cx="-4" cy="yin" r="4"/>` | sát cạnh input của cổng; dây dừng ở x=−8. Đây là cách mặc định để vẽ NOT (như `~div_en`, `~pwrite` trong mẫu). |
+| **NOT đứng riêng** | `<path class="s" d="M0,0 L30,15 L0,30 Z"/>` + bubble (34,15) r4 | input (0,15), output (38,15). Chỉ dùng khi không có cổng phía sau để gắn bubble (vd. `wr_ready_o = ~full`). |
+| **MUX 2:1** | `<path class="s" d="M0,0 L30,15 L30,55 L0,70 Z"/>` | input `0` tại (0,24), `1` tại (0,54), nhãn `<text x="5" y="28">0</text>` và `<text x="5" y="58">1</text>` bên trong; output (30,35); select vào cạnh dưới tại (15,62.5) (hoặc cạnh trên (15,7.5)). Enable/hold: input `0` = feedback Q. |
+| **MUX N:1** | rộng w, cao h, xiên s=2w/3: `M0,0 Lw,s Lw,h−s L0,h Z` (mẫu: `M0,0 L60,40 L60,160 L0,200 Z`) | input cạnh trái cách đều ≥ 40px, nhãn case bên trong sát cạnh trái (`0x0`, `0x4`, `......`); output (w, h/2); select cạnh dưới tại (w/2, h−s/2). |
+| **Register / FF 1 bit** | `<rect class="s" x="0" y="0" width="70" height="110"/>` + clock `<path class="w" d="M0,80 L14,90 L0,100"/>` + reset `<circle class="s" cx="35" cy="115" r="5"/>` | D (0,55), Q (70,55); tên reset port dưới bubble `<text x="35" y="137" text-anchor="middle">`. Không nhãn D/Q, không dây clk. |
+| **Register n bit** | thêm `<rect class="s" x="6" y="-6" width="70" height="110"/>` vẽ **trước** rect chính | Q ra từ (76,55). |
+| **Tên trong ô register** | chữ căn giữa ô | Spec có register map → tên field theo spec (`TIM_EN`); không có → tên thanh ghi `_q` trong spec (`count_q`). n bit: dòng 1 tên (y=50), dòng 2 `[msb:lsb]` (y=66); 1 bit: một dòng (y=59). FF không có tên trong spec → để trống. Tên dài → nới rộng ô. |
+| **FF không reset / reset đồng bộ** | không vẽ bubble | Reset đồng bộ: MUX trước D chọn giá trị reset (select = tín hiệu reset), như `cnt_rst` trong mẫu. |
+| **Bộ nhớ / mảng thanh ghi** | rect (rộng ≥ 150), tam giác clock ở góc dưới-trái khi ghi đồng bộ, bubble reset chỉ khi spec có reset | nhãn giữa khối: dòng 1 tên (`mem_q`), dòng 2 kích thước `A x bitwidth` (mảng 2 chiều `A x bitwidth x B`), dòng 3 `start - end` nếu spec có địa chỉ (`0x000 - 0x03C`). Chân port chạm cạnh khung: `WE`, `WA[..]`, `WD[..]`, `RA[..]`, `RD[..]` (hoặc tên theo spec). |
+| **Khối submodule** (`u_`, `blk_`) | rect, kích thước tự nới cho vừa nhãn và số chân | nhãn giữa khối: `u_` 2 dòng `u_eng` / `dma_engine`; `blk_` 1 dòng tên chức năng (`addr_gen`). Mỗi port là một dây chạm cạnh khung (input trái, output phải; được dùng cạnh trên/dưới để tránh dây vòng). `u_` vẽ đủ port của module con **trừ clk/rst**. |
+| **Mảng instance** (`generate`) | khối `u_` thêm `<rect class="s" x="6" y="-6" .../>` cùng kích thước, vẽ **trước** khung chính (như register n bit) | nhãn giữa khối 3 dòng: `u_lane` / `mac_lane` / `x 4` (số bản sao). Chân port như khối submodule; dây ra cạnh phải bắt đầu từ khung sau (x+6). Port là bus gộp của mọi bản sao; cách cắt bit cho từng bản sao ghi trong model. |
+| **Ellipse operator** | `<ellipse class="s" rx="26..55" ry="16..22"/>` + chữ căn giữa | `== ?`, `>= ?`, `+1`, `+`, `!=0`, `=0`, `sext`. Input chạm viền: x = cx − rx·√(1 − (dy/ry)²). Toán tử 1 ngôi đặt nối tiếp trên dây. |
+| **Cloud** | `<path class="s" d="M20,60 a18,18 0 0 1 -2,-34 a22,22 0 0 1 38,-14 a22,22 0 0 1 40,2 a20,20 0 0 1 22,30 a18,18 0 0 1 -18,28 a22,22 0 0 1 -38,4 a22,22 0 0 1 -42,-16 Z"/>` | ~122×88; phóng to bằng `scale()`. **Không ghi chữ bên trong.** Vẽ cloud sau các dây vào/ra để fill trắng che đầu dây (dây kéo vào trong viền vài px). Dây vào/ra có nhãn. |
+| **Bus bundle** (concat) | `<rect class="s" width="25" height="h"/>` | nhãn vector phía trên (`TCR[31:0]`); field vào cạnh trái với nhãn `[i]`/`[m:l]` hoặc hằng; vector ra giữa cạnh phải. |
+| **Bus split** | như bus bundle, đảo chiều | vector vào giữa cạnh trái; từng bit/field ra cạnh phải, nhãn `[i]`/`[m:l]`. |
+| **Junction dot** | `<circle class="dot" r="4"/>` | tại mọi điểm rẽ nhánh (kể cả góc chữ T). Hai dây cắt nhau **không** có dot = không nối; hạn chế cắt nhau. |
+| **Hằng số** | chỉ là chữ ở đầu dây | `<text text-anchor="end">32'h0</text>` cách đầu dây 5px. |
+
+Phần tử chưa có ký hiệu ở đây (latch, tri-state, clock gate...) → hỏi người dùng mô tả, không tự chế.
+
+## 4. Dây, nhãn, bố cục
+
+- Dây `class="w"`, chỉ ngang/dọc, không mũi tên. Bus dùng cùng nét, phân biệt bằng nhãn `[msb:lsb]`.
+- Font Calibri/Arial 13px, chữ đen. Tên tín hiệu, width, hằng, offset lấy đúng theo spec và bảng port.
+- **Port của module**: dây có nhãn ở mép – input bên trái (nhãn `text-anchor="end"` ngay trước đầu dây), output bên phải (nhãn trên dây, sát đầu phải). Ghi width khi > 1 bit (`din_i[15:0]`). Bus chuẩn được gom một dây nhãn `prefix_*` (`s_apb_*`). **Không vẽ dây clk** (tam giác clock trên FF là đủ); tên reset port ghi dưới bubble.
+- **Port của khối** (`u_`, `blk_`, `mem_`): tên port ghi **trên dây, sát cạnh khung, ở ngoài khung** – không bao giờ ghi bên trong khối. Dây vào cạnh trái: `<text x="edge−4" y="wire−4" text-anchor="end">`; dây ra cạnh phải: `x="edge+4" y="wire−4"`; dây dọc ở cạnh trên/dưới: chữ đặt cạnh dây, sát mép khung. Hai khối nối nhau: ghi tên port ở cả hai đầu, dây đủ dài để hai nhãn không chạm nhau. Tên net trong RTL ghi trong model (mục 5).
+- Tín hiệu nội bộ: nhãn đặt trên dây gần nguồn (`int_set`, `acc_q[39:0]`), không đè lên dot hay dây khác.
+- Luồng trái → phải: input → logic điều kiện → MUX → register → logic output/read mux → output. Feedback (Q → input `0` của MUX, Q → phép toán) đi vòng **phía trên** với junction dot tại điểm rẽ. Logic tạo select đặt phía trên hoặc dưới MUX nó điều khiển; dây select vào cạnh trên/dưới MUX.
+- Khoảng cách ≥ 20px giữa dây song song; không chữ đè dây/khối, không khối chồng nhau; tránh dây cắt nhau bằng cách đổi thứ tự hàng hoặc đưa chân sang cạnh trên/dưới.
+- Lint không kiểm bố cục: trước khi báo xong, rà lại toạ độ để chắc mọi dây nối đúng chân ở cả hai đầu, nhãn không chồng.
+
+## 5. Model `<desc id="model">`
+
+Model là phần **S3 đọc** để biết chính xác hành vi, nhất là phần bị gom (cloud, khối). Bản vẽ và model phải khớp nhau.
 
 ```text
-  classDef port fill:#e8eaf6,stroke:#3949ab,color:#1a237e
-  classDef reg fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#3e2723
-  classDef blk fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-  classDef mux fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-  classDef arith fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-  classDef logic fill:#f5f5f5,stroke:#616161,color:#212121
-  classDef inst fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,color:#311b92
-  classDef note fill:#fffde7,stroke:#f9a825,stroke-dasharray:4 3,color:#5d4037
+// comment; dòng trước mục đầu tiên: ghi chú clock/reset, gán output trực tiếp
+acc_o = acc_q;
+[reg_acc]                                  // = id của nhóm <g id="reg_acc">
+acc_q <= acc_d @(rst=40'h0);               // '<=' thanh ghi; @(rst=<giá trị reset>) khi có reset
+[mux_clr]
+acc_d = clr_i ? 40'h0 : acc_hold;          // '=' logic tổ hợp
+[mem_buf]
+reg [7:0] mem_q [0:15];                    // khai báo mảng
+mem_q[wr_ptr_q] <= wr_data_i @(en=wr_en);  // ghi đồng bộ có enable
+rd_data_o = mem_q[rd_ptr_q];
+[blk_ctrl]                                 // phần bị gom: viết đủ, kể cả thanh ghi ẩn bên trong
+count_q <= count_d @(rst=5'd0);
+[u_eng]
+dma_engine u_eng (.start_i(start_pulse), .busy_o(busy), .m_mem_*(m_mem_*));   // clk/rst ngầm hiểu
+[u_lane]                                   // mảng instance: generate, ghi cách cắt bit từng bản sao
+for (i = 0; i < 4; i = i + 1) mac_lane u_lane (.a_i(a[8*i +: 8]), .p_o(p[16*i +: 16]));
 ```
+
+- Cú pháp kiểu Verilog-2005; `@(rst=...)`, `@(en=...)` là chú thích thanh ghi. `.s_apb_*(s_apb_*)` = nối bus theo tên cùng hậu tố.
+- Mỗi `[id]` ứng với đúng một `<g id>`; nhóm `reg_`/`fsm_`/`mem_`/`cloud_`/`blk_`/`u_` bắt buộc có mục. Thêm mục cho `mux_`/`op_` khi giúp S3 đọc tên tín hiệu trung gian.
+- Model không thêm phần cứng ngoài bản vẽ (trừ bên trong `cloud_`/`blk_`), không bịa tín hiệu ngoài spec; tín hiệu trung gian tự đặt tên theo kiểu `*_d`, `*_en`, `*_sel` và báo lại.
+
+## 6. Góc nhìn scope (`--from/--to`)
+
+`/rtl-s2-diagram <m> --from a,b --to x,y [--part <tên>]` → `doc/diagram/<m>/<m>_<part>.svg` (`<part>` mặc định = tín hiệu `--to` đầu tiên), header thêm `<!-- scope : from a, b to x, y -->`.
+
+- Input của scope (`--from`) là dây nhãn ở mép trái, không vẽ ngược về nguồn; output (`--to`) là dây nhãn ở mép phải, không vẽ tiếp phía sau.
+- Vẽ toàn bộ và chỉ logic nằm trên đường từ input tới output. Tín hiệu phụ cần thiết nhưng không thuộc input đã nêu (reset, địa chỉ, hằng) là dây nhãn ngắn, không mở rộng nguồn.
+- Mức chi tiết và quy trình đề xuất/duyệt như mục 2, theo level của module.
+- Tên tín hiệu không có trong spec hoặc scope mơ hồ → hỏi lại trước khi vẽ.
+- Là góc nhìn phụ: không thay `<m>.svg`, S3 không đọc, lint không kiểm phủ port.
 
 ## 7. Mẫu `<m>_notes.md` (tùy chọn – chỉ khi SKILL.md Bước 4 cần)
 
-Chỉ ghi điều diagram và spec chưa nói rõ; không liệt kê lại từng node, không cột ID truy vết. Dòng đầu ghi level. Phần mô tả tiếng Anh trước + bản dịch `_VI:_`; bảng chỉ tiếng Anh.
+Chỉ ghi điều diagram, model và spec chưa nói rõ; không liệt kê lại từng ký hiệu, không cột ID truy vết. Dòng đầu ghi level. Phần mô tả tiếng Anh trước + bản dịch `_VI:_`; bảng chỉ tiếng Anh.
 
 ```markdown
 # <m> – Design notes / Ghi chú thiết kế
-Level: L1 · Diagram: <m>.mmd
+Level: L1 · Diagram: <m>.svg
 
 ## Implementation / Hiện thực
 | Block | Planned RTL implementation | Notes |
 | --- | --- | --- |
-| `reg_mem` | `reg [DATA_W-1:0] mem_q [0:DEPTH-1]`, no reset | written when `wr_en` |
+| `mem_buf` | `reg [DATA_W-1:0] mem_q [0:DEPTH-1]`, no reset | written when `wr_en` |
 | `fsm_ctl` | `state_q` + `localparam` STATE_IDLE/RUN/DONE | state transitions: see the spec Behavior section |
-| `gen_lane` | `generate for` (`genvar i`) + `mac_lane` | 4 lanes |
+| `u_lane` (x 4) | `generate for` (`genvar i`) + `mac_lane` | 4 lanes |
 
 ## Internal nets (L0 with many instances) / Net nội bộ
 | Net | Width | Source (inst.port) | Destination (inst.port) |
@@ -115,74 +170,3 @@ Level: L1 · Diagram: <m>.mmd
 ```
 
 Bus chuẩn có thể ghi một dòng cho cả nhóm (`m_mem_*`, nối theo tên cùng hậu tố).
-
-## 8. HTML schematic (leaf L2, tùy chọn)
-
-Hai định dạng, hai vai trò – cùng một mô hình kiến trúc:
-
-| | `<m>.mmd` (Mermaid) | `<m>.html` (RTL schematic) |
-| --- | --- | --- |
-| Trả lời | "Module gồm những khối nào?" | "Các khối phần cứng nối với nhau thế nào?" |
-| Mức | khối kiến trúc (mục 1–6, gom logic nhỏ) | primitive RTL: DFF, MUX, comparator, AND/OR/XOR/NOT, + − × <<, hằng, port, dây |
-| Vai trò | diagram chính thức, S3 đọc | bản xem trực quan cho người thiết kế, không stage nào đọc |
-
-`scripts/render_html.py` nhận **mô hình khối** (chính `<m>.mmd`, hoặc stdin) + **lớp chi tiết RTL** bên dưới, dịch thành netlist primitive, đối chiếu với mô hình khối, rồi tự layout. Quy tắc Mermaid ở mục 1–6 không đổi; lớp chi tiết không ghi vào `.mmd`.
-
-### 8.1 Lớp chi tiết RTL
-
-Phương trình kiểu Verilog-2005, nhóm theo node của mô hình. Viết từ spec + mô hình khối, đúng như RTL sẽ hiện thực – không thêm, không bớt phần cứng.
-
-```text
-localparam IDLE = 2'd0, RUN = 2'd1;      // tùy chọn: tên hằng hiện trên schematic
-wire [31:0] data_d;                      // tùy chọn: width khi không suy ra được
-reg  [7:0]  mem_q [0:15];                // bộ nhớ (chỉ trong khối mem_)
-
-[blk_dec]                                // = id node trong mô hình
-addr_hit = paddr_i == 10'h000;           // '=' : logic tổ hợp
-wr_hit   = psel_i & penable_i & pwrite_i & addr_hit;
-[mux_wd]
-data_d   = wr_hit ? pwdata_i : data_q;   // ?: → MUX 2:1, case → MUX N:1
-[reg_data]
-data_q  <= data_d @(rst=32'h0);          // '<=' : thanh ghi; @(rst=, en=, clk=, reset=)
-data_o   = data_q;                       // gán thẳng tên/hằng/cắt bit = nối dây, không sinh phần tử
-[mux_rd]
-prdata_o = case (paddr_i)
-             10'h000: data_q;
-             10'h004: {24'h0, status_i};
-             default: 32'hDEADBEEF;
-           endcase;
-```
-
-- Toán tử: `== != < <= > >=` · `& && | || ^ ~^ ~ !` · rút gọn `&x |x ^x` · `+ - * / % << >> <<< >>>` · `?:` · `case (s) K: e; …; default: e; endcase` · `{a, b}` · `{n{a}}` · `x[i]`, `x[m:l]` · `mem_q[addr]` · `( )`. Comment `//`, `/* */`.
-- Thanh ghi: `@(rst=<giá trị reset>)` khi thanh ghi có reset (thiếu → vẽ không chân RST); `@(en=<biểu thức>)` khi spec mô tả clock-enable (vẽ chân EN); enable dạng giữ giá trị viết `x_d = en ? d : x_q` (vẽ MUX feedback). Clock/reset mặc định là input port duy nhất có tên chứa `clk`/`rst` (hoặc `clock`/`reset`); nhiều hơn một → ghi `clk=`/`reset=`.
-- Width lấy theo thứ tự: khai báo trong lớp chi tiết → bảng port (`--interface`) → nhãn `tên [m:l]` trong mô hình → suy ra từ biểu thức.
-
-Kiểm tra bắt buộc (sai → không ghi HTML):
-
-| Luật | Ý nghĩa |
-| --- | --- |
-| mỗi khối bên trong của mô hình có ít nhất một phương trình | HTML không bỏ sót khối |
-| `<=` chỉ trong `reg_`/`ff_`/`fsm_`, ghi bộ nhớ chỉ trong `mem_` | không bịa thanh ghi/bộ nhớ |
-| `reg_`/`fsm_` có DFF, `mux_` có MUX, `op_` có phép toán/so sánh | khối giữ đúng vai trò |
-| tín hiệu đi từ khối A sang khối B ⇔ mô hình có cạnh A → B | cùng kết nối với `.mmd` (clock/reset ra khỏi phép so) |
-| mọi tín hiệu có nguồn, mọi output được gán, không gán hai lần | netlist đầy đủ |
-
-### 8.2 Ánh xạ sang schematic
-
-| Lớp chi tiết | Phần tử vẽ |
-| --- | --- |
-| `q <= d` | DFF: chân D, Q, ▷ clock, RST (vòng tròn khi active-low), EN nếu có; tên `q` ở trên, `[w] rst=…` ở dưới |
-| `s ? a : b`, `case` | hình thang MUX, nhãn từng ngõ (`0`/`1`, giá trị case), select vào cạnh dưới |
-| `== != < <= > >=` | khối comparator ghi toán tử (A/B khi không giao hoán) |
-| `+ − × ÷ << >>`, `x[sel]` | vòng tròn phép toán |
-| `& \| ^ ~` (2+ ngõ gộp thành một cổng) | ký hiệu cổng AND/OR/XOR/NOT chuẩn, bubble cho NAND/NOR/XNOR |
-| hằng, `localparam` | hộp nhỏ gắn ngay tại chân dùng nó (`10'h000`, `LOCK`) |
-| `{a, b}`, `{n{a}}` | thanh concat |
-| `mem_q[a] <= d`, `mem_q[a]` | khối MEM: WA, WD, WE, RA/RD, ▷ |
-| port | mũi tên ngũ giác ngoài khung module, tên + `[m:0]` |
-
-Dây: dữ liệu nét liền, bus (width > 1) nét đậm, điều khiển (1 bit chỉ đi vào select/enable/điều kiện) nét đứt, clock/reset nét gạch-chấm – phân biệt được khi in trắng đen. Nhãn `tên[m:0]` đặt ngay sau chân nguồn; cắt bit (`[15]`) và tên tín hiệu feedback đặt trước chân đích; chấm tròn tại điểm rẽ nhánh.
-
-### 8.3 Layout
-
-Phân lớp trái → phải theo đường dài nhất từ input (port vào cột trái, port ra cột phải, node được kéo về sát nơi dùng); cạnh ra từ Q của thanh ghi/bộ nhớ tạo vòng thì thành **feedback**, đi lên lane phía trên rồi vòng về; clock/reset là **rail** phía dưới, rẽ lên từng chân ▷/RST. Thứ tự trong cột: barycenter theo vị trí chân, giữ phương án ít giao cắt nhất; tọa độ y căn chân thẳng hàng rồi nắn các dây lệch vài px. Dây chỉ ngang/dọc, đi trong kênh giữa hai cột, mỗi net một track dọc, track xếp theo số giao cắt ít nhất. HTML tự chứa (HTML + CSS + SVG inline + JS nhỏ): zoom (lăn chuột, nút), kéo để di chuyển, vừa khung, rê lên phần tử để làm sáng các phần tử cùng khối mô hình, nhấp dây để tô cả net. Mô hình khối và lớp chi tiết được nhúng (`<script type="application/json" id="arch-model">`) để `render_html.py --check … --mmd …` kiểm lại.

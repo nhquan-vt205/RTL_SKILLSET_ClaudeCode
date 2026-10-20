@@ -4,9 +4,13 @@ Gate (điều kiện đầu vào) cho từng stage của RTL flow. Bản này gi
 
 Chạy từ thư mục gốc project:
     python3 .claude/skills/<skill>/scripts/check_preconditions.py --stage 1
-    python3 .claude/skills/<skill>/scripts/check_preconditions.py --stage 2 --module <m> [--level L0|L1|L2]
+    python3 .claude/skills/<skill>/scripts/check_preconditions.py --stage 2 --module <m> [<m2> ...] [--level L0|L1|L2]
 
 Mã thoát: 0 = đủ điều kiện về file · 1 = thiếu → skill dừng · 2 = gọi sai.
+
+Stage 2 nhận mọi module của lệnh trong một lần gọi (mỗi module một khối kết quả); stage khác một module.
+Diagram chính thức của S2 là doc/diagram/<m>/<m>.svg (level đọc từ header '<!-- stage : 2 - diagram Lx -->');
+gate S3 chỉ nhận file này. File định dạng cũ (*.mmd, <m>.html) không còn được đọc – vẽ lại bằng S2.
 
 Hai chế độ, tự nhận biết:
   - đơn      : không có doc/spec/spec_status.md và không có dấu hiệu phân cấp. Module = mỗi file
@@ -30,6 +34,7 @@ from pathlib import Path
 PLACEHOLDERS = {".gitkeep", "readme.md", ".ds_store", "thumbs.db"}
 RTL_EXT = (".sv", ".v")
 LEVELS = ("L0", "L1", "L2")
+LEGACY_DIAGRAM = ("*.mmd", "*.html", "*_ff_notes.md")
 NAME = re.compile(r"^[A-Za-z_]\w*$")
 # Khóa máy đọc: tiếng Anh (chuẩn hiện tại) + tiếng Việt (tài liệu cũ)
 PORT_COL = ("port name", "tên port")
@@ -188,22 +193,25 @@ def rtl_file(root: Path, mod: str):
 
 
 def diagram_level(root: Path, mod: str):
-    """Level của diagram hiện có: header '%% stage : 2 - diagram Lx' trong .mmd, hoặc 'Level:' trong notes."""
+    """Level của diagram hiện có: header '<!-- stage : 2 - diagram Lx -->' trong <m>.svg, hoặc 'Level:' trong notes."""
     d = root / "doc" / "diagram" / mod
     if not d.is_dir():
         return ""
-    for p in sorted(d.glob("*.mmd")):
-        m = re.search(r"%%.*?\b(?:diagram|level)\b\s*:?\s*(L[012])\b", read(p), re.I)
+    if (d / f"{mod}.svg").is_file():
+        m = re.search(r"<!--\s*stage\s*:.*?\bdiagram\s+(L[012])\b", read(d / f"{mod}.svg"), re.I)
         if m:
             return m.group(1).upper()
-    for name in (f"{mod}_notes.md", f"{mod}_ff_notes.md"):
-        if (d / name).is_file():
-            m = re.search(r"Level\s*:\s*\**\s*(L[012])", read(d / name), re.I)
-            if m:
-                return m.group(1).upper()
-            if name.endswith("_ff_notes.md"):
-                return "L2"
+    if (d / f"{mod}_notes.md").is_file():
+        m = re.search(r"Level\s*:\s*\**\s*(L[012])", read(d / f"{mod}_notes.md"), re.I)
+        if m:
+            return m.group(1).upper()
     return ""
+
+
+def legacy_diagrams(root: Path, mod: str):
+    """File diagram định dạng cũ (Mermaid, HTML schematic, ff_notes) – S3 không còn đọc."""
+    d = root / "doc" / "diagram" / mod
+    return sorted({p for g in LEGACY_DIAGRAM for p in d.glob(g)}) if d.is_dir() else []
 
 
 # ---------- gate ----------
@@ -300,15 +308,21 @@ def check(stage, mod, level_arg, root, skill_dir):
         old = diagram_level(root, mod)
         if old and old != lv:
             info.append(f"diagram hiện có ở {old} – đổi sang {lv} phải nêu lý do trong báo cáo")
+        old_files = legacy_diagrams(root, mod)
+        if old_files:
+            info.append("file diagram định dạng cũ (không còn dùng) – xóa khi vẽ lại: "
+                        + ", ".join(rel(root, p) for p in old_files))
 
     if stage == 3:
         ddir = root / "doc" / "diagram" / mod
-        mmd = sorted(ddir.glob("*.mmd")) if ddir.is_dir() else []
-        need(bool(mmd), f"diagram: {', '.join(rel(root, p) for p in mmd)}",
-             f"thiếu diagram doc/diagram/{mod}/*.mmd – chạy /rtl-s2-diagram {mod} trước")
-        notes = [p for p in (ddir / f"{mod}_notes.md", ddir / f"{mod}_ff_notes.md") if p.is_file()]
-        if notes:
-            info.append(f"ghi chú thiết kế: {rel(root, notes[0])}")
+        svg = ddir / f"{mod}.svg"
+        old_files = legacy_diagrams(root, mod)
+        need(svg.is_file(), f"diagram: {rel(root, svg)}",
+             f"thiếu diagram doc/diagram/{mod}/{mod}.svg – chạy /rtl-s2-diagram {mod} trước"
+             + (f" (chỉ có định dạng cũ {', '.join(p.name for p in old_files)} – không còn được đọc)"
+                if old_files else ""))
+        if (ddir / f"{mod}_notes.md").is_file():
+            info.append(f"ghi chú thiết kế: {rel(root, ddir / f'{mod}_notes.md')}")
         lv = diagram_level(root, mod) or row["level"] or ("L0" if kids else "L2")
         info.append(f"level: {lv}")
         missing = [k for k in descendants(rows, mod) if rtl_file(root, k) is None]
@@ -351,24 +365,29 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser()
     ap.add_argument("--stage", type=int, required=True, choices=[1, 2, 3, 4, 5])
-    ap.add_argument("--module", default="")
+    ap.add_argument("--module", nargs="*", default=[])
     ap.add_argument("--level", default="", type=str.upper, choices=["", *LEVELS])
     ap.add_argument("--root", default="")
     a = ap.parse_args()
+    mods = [m for arg in a.module for m in arg.replace(",", " ").split()]
+    if a.stage != 2 and len(mods) > 1:
+        ap.error(f"gate stage {a.stage} kiểm từng module một – gọi riêng cho mỗi module")
 
     skill_dir = Path(__file__).resolve().parent.parent
     root = Path(a.root).resolve() if a.root else find_project_root(Path.cwd().resolve())
-    ok, miss, info = check(a.stage, a.module.strip(), a.level, root, skill_dir)
-
-    print(f"== GATE STAGE {a.stage}{' – ' + a.module if a.module else ''} ==  (root: {root})")
-    for m in ok:
-        print(f"[OK]    {m}")
-    for m in info:
-        print(f"[INFO]  {m}")
-    for m in miss:
-        print(f"[THIẾU] {m}")
-    print("KẾT QUẢ:", "ĐỦ ĐIỀU KIỆN" if not miss else "KHÔNG ĐỦ ĐIỀU KIỆN – DỪNG")
-    sys.exit(0 if not miss else 1)
+    failed = False
+    for mod in mods or [""]:
+        ok, miss, info = check(a.stage, mod, a.level, root, skill_dir)
+        print(f"== GATE STAGE {a.stage}{' – ' + mod if mod else ''} ==  (root: {root})")
+        for m in ok:
+            print(f"[OK]    {m}")
+        for m in info:
+            print(f"[INFO]  {m}")
+        for m in miss:
+            print(f"[THIẾU] {m}")
+        print("KẾT QUẢ:", "ĐỦ ĐIỀU KIỆN" if not miss else "KHÔNG ĐỦ ĐIỀU KIỆN – DỪNG")
+        failed |= bool(miss)
+    sys.exit(1 if failed else 0)
 
 
 if __name__ == "__main__":

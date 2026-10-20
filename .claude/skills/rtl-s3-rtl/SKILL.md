@@ -23,7 +23,7 @@ Mục tiêu: RTL **Verilog-2005, đúng chức năng trong spec, đơn giản, d
 python3 .claude/skills/rtl-s3-rtl/scripts/check_preconditions.py --stage 3 --module <m>
 ```
 
-Cần: spec đã PASS, bảng port của module, diagram `doc/diagram/<m>/*.mmd`. `<m>_notes.md` không bắt buộc – có thì đọc. Diagram đầu vào chỉ là `.mmd`; `<m>.html` (schematic xem tùy chọn của S2) không đọc và không thay được `.mmd`. Mã thoát ≠ 0 → bỏ qua module đó, báo các dòng `[THIẾU]` và lệnh cần chạy trước. Dòng `[INFO]` cho biết file cần đọc, level và module con chưa có RTL.
+Cần: spec đã PASS, bảng port của module, diagram `doc/diagram/<m>/<m>.svg`. `<m>_notes.md` không bắt buộc – có thì đọc. Diagram đầu vào chỉ là `<m>.svg`; góc nhìn scope `<m>_<part>.svg` không đọc; file định dạng cũ (`.mmd`, `.html`) không còn được nhận – chạy lại `/rtl-s2-diagram <m>`. Mã thoát ≠ 0 → bỏ qua module đó, báo các dòng `[THIẾU]` và lệnh cần chạy trước. Dòng `[INFO]` cho biết file cần đọc, level và module con chưa có RTL.
 
 ## Bước 1 – Coding rule
 
@@ -35,7 +35,7 @@ Cần: spec đã PASS, bảng port của module, diagram `doc/diagram/<m>/*.mmd`
 
 ## Bước 2 – Đọc thiết kế
 
-Đọc các file gate in ra: spec (chức năng, hành vi, reset, thanh ghi, FSM, định dạng số), bảng port (tên, hướng, width, thứ tự), diagram (kiến trúc: thanh ghi, khối, instance, kết nối), notes nếu có, tài liệu tách riêng nếu có (parameter, register map, FSM), bảng port của module con.
+Đọc các file gate in ra: spec (chức năng, hành vi, reset, thanh ghi, FSM, định dạng số), bảng port (tên, hướng, width, thứ tự), diagram (`<m>.svg`: bản vẽ cho thanh ghi, MUX, cổng, khối, instance, kết nối; `<desc id="model">` cho phương trình chính xác từng khối – phần gom thành cloud/khối `blk_` chỉ có hành vi trong model, vẫn viết trong module này), notes nếu có, tài liệu tách riêng nếu có (parameter, register map, FSM), bảng port của module con.
 
 ## Bước 3 – Viết code
 
@@ -54,7 +54,7 @@ Theo level:
 | --- | --- |
 | **L2** | `reg` + `always` + `always @(*)` + `assign`. Thanh ghi trạng thái của diagram thành `reg ..._q` (khối `always @(posedge clk_i ...)`), logic next-value (mux/cộng/so sánh của diagram) thành `always @(*)` tính `_d` hoặc `assign`, output bằng `assign`. Thứ tự trong file: port → khai báo `wire`/`reg` nội bộ → thanh ghi → logic next-value → output; module đơn giản được gộp bớt khối. Tên tín hiệu đủ rõ để đối chiếu từng khối diagram; không nén code chỉ để ít dòng. |
 | **L1** | `wire`/`reg`, mảng bộ nhớ Verilog (`reg [7:0] mem_q [0:15]`), `generate for` khi kiến trúc là nhiều bản sao giống nhau, `localparam`. Không `typedef`/`struct`/`enum`: trường dữ liệu thành vector riêng, FSM bằng `localparam` + `reg`. Theo "hiện thực RTL dự kiến" trong notes nếu có (diễn đạt lại bằng Verilog-2005 nếu notes viết kiểu SV). |
-| **L0** | Một instance cho mỗi node `u_`/`gen_`, nối theo tên (`.port(net)`), net nội bộ khai báo `wire` đúng tên nhãn cạnh/notes; glue logic bằng `assign`. |
+| **L0** | Một instance cho mỗi khối `u_` (khối mảng ghi `x N` → `generate for` N bản sao, cắt bit theo model), nối theo tên (`.port(net)`) theo port map trong model, net nội bộ khai báo `wire` đúng tên trong model/notes; glue logic bằng `assign`. |
 
 Chung:
 - Port list giống hệt bảng port (tên, hướng, width, thứ tự), kiểu ANSI Verilog-2005; output gán trong `always` là `output reg`.
