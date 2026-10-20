@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 """
-Gate (điều kiện đầu vào) cho từng stage của RTL flow. Bản ở 5 skill dùng chung logic; bản của
-rtl-s2-diagram có thêm --format và nhiều module cho stage 2 (stage 1, 3, 4, 5 hành vi không đổi,
-nên copy bản này sang skill khác vẫn tương thích).
+Gate (điều kiện đầu vào) cho từng stage của RTL flow. Bản này giống hệt nhau ở cả 5 skill.
 
 Chạy từ thư mục gốc project:
     python3 .claude/skills/<skill>/scripts/check_preconditions.py --stage 1
-    python3 .claude/skills/<skill>/scripts/check_preconditions.py --stage 2 --module <m> [<m2> ...]
-            [--level L0|L1|L2] [--format mermaid|html|both]
+    python3 .claude/skills/<skill>/scripts/check_preconditions.py --stage 2 --module <m> [<m2> ...] [--level L0|L1|L2]
 
 Mã thoát: 0 = đủ điều kiện về file · 1 = thiếu → skill dừng · 2 = gọi sai.
 
 Stage 2 nhận mọi module của lệnh trong một lần gọi (mỗi module một khối kết quả); stage khác một module.
---format (chỉ stage 2, mặc định mermaid): html/both chỉ cho MỘT module, leaf, level L2.
-HTML là bản xem trực quan của S2; gate S3 chỉ nhận doc/diagram/<m>/*.mmd.
+Diagram chính thức của S2 là doc/diagram/<m>/<m>.svg (level đọc từ header '<!-- stage : 2 - diagram Lx -->');
+gate S3 chỉ nhận file này. File định dạng cũ (*.mmd, <m>.html) không còn được đọc – vẽ lại bằng S2.
 
 Hai chế độ, tự nhận biết:
   - đơn      : không có doc/spec/spec_status.md và không có dấu hiệu phân cấp. Module = mỗi file
@@ -37,7 +34,7 @@ from pathlib import Path
 PLACEHOLDERS = {".gitkeep", "readme.md", ".ds_store", "thumbs.db"}
 RTL_EXT = (".sv", ".v")
 LEVELS = ("L0", "L1", "L2")
-FORMATS = ("mermaid", "html", "both")
+LEGACY_DIAGRAM = ("*.mmd", "*.html", "*_ff_notes.md")
 NAME = re.compile(r"^[A-Za-z_]\w*$")
 # Khóa máy đọc: tiếng Anh (chuẩn hiện tại) + tiếng Việt (tài liệu cũ)
 PORT_COL = ("port name", "tên port")
@@ -196,27 +193,30 @@ def rtl_file(root: Path, mod: str):
 
 
 def diagram_level(root: Path, mod: str):
-    """Level của diagram hiện có: header '%% stage : 2 - diagram Lx' trong .mmd, hoặc 'Level:' trong notes."""
+    """Level của diagram hiện có: header '<!-- stage : 2 - diagram Lx -->' trong <m>.svg, hoặc 'Level:' trong notes."""
     d = root / "doc" / "diagram" / mod
     if not d.is_dir():
         return ""
-    for p in sorted(d.glob("*.mmd")):
-        m = re.search(r"%%.*?\b(?:diagram|level)\b\s*:?\s*(L[012])\b", read(p), re.I)
+    if (d / f"{mod}.svg").is_file():
+        m = re.search(r"<!--\s*stage\s*:.*?\bdiagram\s+(L[012])\b", read(d / f"{mod}.svg"), re.I)
         if m:
             return m.group(1).upper()
-    for name in (f"{mod}_notes.md", f"{mod}_ff_notes.md"):
-        if (d / name).is_file():
-            m = re.search(r"Level\s*:\s*\**\s*(L[012])", read(d / name), re.I)
-            if m:
-                return m.group(1).upper()
-            if name.endswith("_ff_notes.md"):
-                return "L2"
+    if (d / f"{mod}_notes.md").is_file():
+        m = re.search(r"Level\s*:\s*\**\s*(L[012])", read(d / f"{mod}_notes.md"), re.I)
+        if m:
+            return m.group(1).upper()
     return ""
+
+
+def legacy_diagrams(root: Path, mod: str):
+    """File diagram định dạng cũ (Mermaid, HTML schematic, ff_notes) – S3 không còn đọc."""
+    d = root / "doc" / "diagram" / mod
+    return sorted({p for g in LEGACY_DIAGRAM for p in d.glob(g)}) if d.is_dir() else []
 
 
 # ---------- gate ----------
 
-def check(stage, mod, level_arg, root, skill_dir, fmt="mermaid"):
+def check(stage, mod, level_arg, root, skill_dir):
     ok, miss, info = [], [], []
 
     def need(cond, msg_ok, msg_miss):
@@ -308,30 +308,21 @@ def check(stage, mod, level_arg, root, skill_dir, fmt="mermaid"):
         old = diagram_level(root, mod)
         if old and old != lv:
             info.append(f"diagram hiện có ở {old} – đổi sang {lv} phải nêu lý do trong báo cáo")
-        leaf = not kids and row["kind"] not in ("top", "block")
-        if fmt != "mermaid":
-            what = f"level {lv}, " + ("leaf" if leaf else f"không phải leaf (loại {row['kind'] or '?'}"
-                                      + (f", module con: {', '.join(kids)}" if kids else "") + ")")
-            need(lv == "L2" and leaf, f"--format {fmt}: `{mod}` là leaf, level L2",
-                 f"--format {fmt} chỉ dùng cho module leaf ở L2 (`{mod}`: {what}) – "
-                 f"gọi lại với --format mermaid; không tự chuyển định dạng")
-        info.append(f"định dạng: {fmt}")
-        ddir = root / "doc" / "diagram" / mod
-        if fmt == "html" and (ddir / f"{mod}.mmd").is_file():
-            info.append(f"đã có doc/diagram/{mod}/{mod}.mmd – HTML render từ chính file này, không vẽ lại "
-                        "kiến trúc (muốn vẽ lại: --format both)")
-        if fmt == "mermaid" and (ddir / f"{mod}.html").is_file():
-            info.append(f"còn doc/diagram/{mod}/{mod}.html – vẽ lại .mmd thì xóa file này "
-                        "(hoặc gọi --format both để cập nhật cả hai)")
+        old_files = legacy_diagrams(root, mod)
+        if old_files:
+            info.append("file diagram định dạng cũ (không còn dùng) – xóa khi vẽ lại: "
+                        + ", ".join(rel(root, p) for p in old_files))
 
     if stage == 3:
         ddir = root / "doc" / "diagram" / mod
-        mmd = sorted(ddir.glob("*.mmd")) if ddir.is_dir() else []
-        need(bool(mmd), f"diagram: {', '.join(rel(root, p) for p in mmd)}",
-             f"thiếu diagram doc/diagram/{mod}/*.mmd – chạy /rtl-s2-diagram {mod} trước")
-        notes = [p for p in (ddir / f"{mod}_notes.md", ddir / f"{mod}_ff_notes.md") if p.is_file()]
-        if notes:
-            info.append(f"ghi chú thiết kế: {rel(root, notes[0])}")
+        svg = ddir / f"{mod}.svg"
+        old_files = legacy_diagrams(root, mod)
+        need(svg.is_file(), f"diagram: {rel(root, svg)}",
+             f"thiếu diagram doc/diagram/{mod}/{mod}.svg – chạy /rtl-s2-diagram {mod} trước"
+             + (f" (chỉ có định dạng cũ {', '.join(p.name for p in old_files)} – không còn được đọc)"
+                if old_files else ""))
+        if (ddir / f"{mod}_notes.md").is_file():
+            info.append(f"ghi chú thiết kế: {rel(root, ddir / f'{mod}_notes.md')}")
         lv = diagram_level(root, mod) or row["level"] or ("L0" if kids else "L2")
         info.append(f"level: {lv}")
         missing = [k for k in descendants(rows, mod) if rtl_file(root, k) is None]
@@ -376,23 +367,17 @@ def main():
     ap.add_argument("--stage", type=int, required=True, choices=[1, 2, 3, 4, 5])
     ap.add_argument("--module", nargs="*", default=[])
     ap.add_argument("--level", default="", type=str.upper, choices=["", *LEVELS])
-    ap.add_argument("--format", default="mermaid", type=str.lower, choices=FORMATS)
     ap.add_argument("--root", default="")
     a = ap.parse_args()
     mods = [m for arg in a.module for m in arg.replace(",", " ").split()]
     if a.stage != 2 and len(mods) > 1:
         ap.error(f"gate stage {a.stage} kiểm từng module một – gọi riêng cho mỗi module")
-    if a.format != "mermaid" and a.stage != 2:
-        ap.error("--format chỉ dùng cho stage 2")
-    if a.format != "mermaid" and len(mods) > 1:
-        ap.error(f"--format {a.format} chỉ dùng cho MỘT module leaf L2 (lệnh có {len(mods)} module: "
-                 f"{', '.join(mods)}) – gọi riêng từng module, hoặc dùng --format mermaid")
 
     skill_dir = Path(__file__).resolve().parent.parent
     root = Path(a.root).resolve() if a.root else find_project_root(Path.cwd().resolve())
     failed = False
     for mod in mods or [""]:
-        ok, miss, info = check(a.stage, mod, a.level, root, skill_dir, a.format)
+        ok, miss, info = check(a.stage, mod, a.level, root, skill_dir)
         print(f"== GATE STAGE {a.stage}{' – ' + mod if mod else ''} ==  (root: {root})")
         for m in ok:
             print(f"[OK]    {m}")

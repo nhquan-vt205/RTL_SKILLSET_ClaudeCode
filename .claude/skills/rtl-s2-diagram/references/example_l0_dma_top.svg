@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="560" viewBox="0 0 1180 560"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : dma_top -->
+  <!-- stage  : 2 - diagram L0 (child blocks + gate-level glue) -->
+  <!-- source : doc/spec/architecture/dma_top_spec.md + port tables of dma_regs, dma_engine, dma_irq -->
+  <desc id="model"><![CDATA[
+// clk_i / rst_n_i go to every instance (not drawn). s_apb_* / m_mem_*: bus groups, connected by name.
+[u_regs]
+dma_regs u_regs (.s_apb_*(s_apb_*), .busy_i(busy), .done_i(done_pulse),
+                 .cfg_src_o(cfg_src), .cfg_dst_o(cfg_dst), .cfg_len_o(cfg_len), .start_o(start_pulse),
+                 .irq_clr_o(irq_clr), .irq_en_o(irq_en));
+[u_eng]
+dma_engine u_eng (.start_i(start_pulse), .cfg_src_i(cfg_src), .cfg_dst_i(cfg_dst), .cfg_len_i(cfg_len),
+                  .busy_o(busy), .done_o(done_pulse), .m_mem_*(m_mem_*));
+[u_irq]
+dma_irq u_irq (.done_i(done_pulse), .irq_clr_i(irq_clr), .irq_raw_o(irq_raw));
+[gate_irq]
+irq_o = irq_raw & irq_en;
+]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+
+  <!-- ===== input bus ===== -->
+  <text x="112" y="124" text-anchor="end">s_apb_*</text>
+  <line class="w" x1="120" y1="120" x2="260" y2="120"/>
+  <text x="256" y="116" text-anchor="end">s_apb_*</text>
+
+  <!-- ===== u_regs ===== -->
+  <g id="u_regs">
+    <rect class="s" x="260" y="80" width="160" height="400"/>
+    <text x="340" y="272" text-anchor="middle">u_regs</text>
+    <text x="340" y="290" text-anchor="middle">dma_regs</text>
+  </g>
+  <text x="424" y="116">cfg_src_o[31:0]</text>
+  <text x="424" y="156">cfg_dst_o[31:0]</text>
+  <text x="424" y="196">cfg_len_o[15:0]</text>
+  <text x="424" y="236">start_o</text>
+  <text x="424" y="326">busy_i</text>
+  <text x="424" y="346">done_i</text>
+  <text x="424" y="436">irq_clr_o</text>
+  <text x="424" y="456">irq_en_o</text>
+
+  <!-- u_regs -> u_eng -->
+  <line class="w" x1="420" y1="120" x2="640" y2="120"/>
+  <line class="w" x1="420" y1="160" x2="640" y2="160"/>
+  <line class="w" x1="420" y1="200" x2="640" y2="200"/>
+  <line class="w" x1="420" y1="240" x2="640" y2="240"/>
+
+  <!-- ===== u_eng ===== -->
+  <g id="u_eng">
+    <rect class="s" x="640" y="80" width="160" height="220"/>
+    <text x="720" y="182" text-anchor="middle">u_eng</text>
+    <text x="720" y="200" text-anchor="middle">dma_engine</text>
+  </g>
+  <text x="636" y="116" text-anchor="end">cfg_src_i[31:0]</text>
+  <text x="636" y="156" text-anchor="end">cfg_dst_i[31:0]</text>
+  <text x="636" y="196" text-anchor="end">cfg_len_i[15:0]</text>
+  <text x="636" y="236" text-anchor="end">start_i</text>
+  <text x="804" y="116">m_mem_*</text>
+  <text x="684" y="316">busy_o</text>
+  <text x="744" y="316">done_o</text>
+  <line class="w" x1="800" y1="120" x2="1150" y2="120"/>
+  <text x="1150" y="116" text-anchor="end">m_mem_*</text>
+
+  <!-- u_eng -> u_regs (busy, done) and -> u_irq (done) -->
+  <path class="w" d="M680,300 V330 H420"/>
+  <path class="w" d="M740,300 V350 H420"/>
+  <circle class="dot" cx="740" cy="350" r="4"/>
+  <line class="w" x1="740" y1="350" x2="740" y2="400"/>
+
+  <!-- ===== u_irq ===== -->
+  <g id="u_irq">
+    <rect class="s" x="640" y="400" width="160" height="100"/>
+    <text x="720" y="446" text-anchor="middle">u_irq</text>
+    <text x="720" y="464" text-anchor="middle">dma_irq</text>
+  </g>
+  <text x="744" y="394">done_i</text>
+  <text x="636" y="436" text-anchor="end">irq_clr_i</text>
+  <text x="804" y="436">irq_raw_o</text>
+  <line class="w" x1="420" y1="440" x2="640" y2="440"/>
+
+  <!-- ===== glue: irq_o = irq_raw & irq_en ===== -->
+  <path class="w" d="M800,440 H870 V470 H900"/>
+  <path class="w" d="M420,460 H600 V520 H880 V490 H900"/>
+  <g id="gate_irq">
+    <path class="s" d="M900,455 H930 A25,25 0 0 1 930,505 H900 Z"/>
+  </g>
+  <line class="w" x1="955" y1="480" x2="1150" y2="480"/>
+  <text x="1150" y="476" text-anchor="end">irq_o</text>
+</svg>

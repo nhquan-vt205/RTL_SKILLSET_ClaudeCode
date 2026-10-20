@@ -33,7 +33,7 @@ Không chia để tăng số module. Thiết kế nhỏ: một module duy nhất
 ### 2.2 Loại và level
 
 - **Loại:** `top` (gốc có module con), `block` (có module con), `leaf` (không có module con). Module đơn là `leaf`.
-- **Level** (đề xuất cho S2): `L0` cho module có module con mà logic riêng chỉ là nối dây/glue; `L2` cho leaf nhỏ mà diagram thanh ghi + logic chính còn đọc được trên một màn hình; `L1` cho leaf lớn hoặc có mảng/pipeline/generate, và cho block có nhiều logic riêng.
+- **Level** (đề xuất cho S2): `L0` cho module có module con mà logic riêng chỉ là nối dây/glue; `L2` cho leaf nhỏ mà sơ đồ logic tới từng gate còn đọc được trên một màn hình; `L1` cho leaf lớn hoặc có mảng/pipeline/generate, và cho block có nhiều logic riêng.
 - Level gán theo từng module, không theo cấp cây: leaf nhỏ trong IP lớn vẫn là L2.
 
 ## 3. Khi nào tách file

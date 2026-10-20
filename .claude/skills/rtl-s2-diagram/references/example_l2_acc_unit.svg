@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1090" height="425" viewBox="0 0 1090 425"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : acc_unit -->
+  <!-- stage  : 2 - diagram L2 (gate-level logic diagram) -->
+  <!-- source : doc/spec/acc_unit_spec.md -->
+  <desc id="model"><![CDATA[
+// clk_i rising edge, rst_n_i asynchronous active-low (not drawn: clock triangle / reset bubble)
+acc_o = acc_q;
+hit_o = hit_q;
+[op_sext]
+din_ext = {{24{din_i[15]}}, din_i};
+[op_add]
+acc_sum = acc_q + din_ext;
+[mux_en]
+acc_hold = din_valid_i ? acc_sum : acc_q;
+[mux_clr]
+acc_d = clr_i ? 40'h0 : acc_hold;
+[reg_acc]
+acc_q <= acc_d @(rst=40'h0);
+[op_cmp]
+hit_d = acc_q >= thr_i;
+[reg_hit]
+hit_q <= hit_d @(rst=1'b0);
+]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+
+  <!-- ===== inputs ===== -->
+  <text x="112" y="212" text-anchor="end">din_i[15:0]</text>
+  <line class="w" x1="120" y1="208" x2="157" y2="208"/>
+  <text x="112" y="334" text-anchor="end">din_valid_i</text>
+  <path class="w" d="M120,330 H435 V208.5"/>
+  <text x="112" y="364" text-anchor="end">clr_i</text>
+  <path class="w" d="M120,360 H545 V219.5"/>
+  <text x="112" y="404" text-anchor="end">thr_i[39:0]</text>
+  <path class="w" d="M120,400 H770 V320 H804.4"/>
+
+  <!-- ===== next value: sext + add ===== -->
+  <g id="op_sext">
+    <ellipse class="s" cx="195" cy="208" rx="38" ry="20"/>
+    <text x="195" y="213" text-anchor="middle">sext</text>
+  </g>
+  <line class="w" x1="233" y1="208" x2="302.5" y2="208"/>
+  <text x="238" y="202">[39:0]</text>
+  <g id="op_add">
+    <ellipse class="s" cx="330" cy="200" rx="30" ry="20"/>
+    <text x="330" y="205" text-anchor="middle">+</text>
+  </g>
+  <line class="w" x1="360" y1="200" x2="420" y2="200"/>
+
+  <!-- ===== enable mux (0 = hold) ===== -->
+  <g id="mux_en">
+    <path class="s" d="M420,146 L450,161 L450,201 L420,216 Z"/>
+    <text x="425" y="174">0</text>
+    <text x="425" y="204">1</text>
+  </g>
+  <line class="w" x1="450" y1="181" x2="530" y2="181"/>
+
+  <!-- ===== clear mux ===== -->
+  <text x="490" y="215" text-anchor="end">40'h0</text>
+  <line class="w" x1="495" y1="211" x2="530" y2="211"/>
+  <g id="mux_clr">
+    <path class="s" d="M530,157 L560,172 L560,212 L530,227 Z"/>
+    <text x="535" y="185">0</text>
+    <text x="535" y="215">1</text>
+  </g>
+  <line class="w" x1="560" y1="192" x2="620" y2="192"/>
+
+  <!-- ===== acc_q register (40 bit) ===== -->
+  <g id="reg_acc">
+    <rect class="s" x="626" y="131" width="70" height="110"/>
+    <rect class="s" x="620" y="137" width="70" height="110"/>
+    <path class="w" d="M620,217 L634,227 L620,237"/>
+    <circle class="s" cx="655" cy="252" r="5"/>
+    <text x="655" y="187" text-anchor="middle">acc_q</text>
+    <text x="655" y="203" text-anchor="middle">[39:0]</text>
+  </g>
+  <text x="655" y="274" text-anchor="middle">rst_n_i</text>
+  <line class="w" x1="696" y1="192" x2="1060" y2="192"/>
+  <text x="790" y="185">acc_q[39:0]</text>
+  <text x="1060" y="185" text-anchor="end">acc_o[39:0]</text>
+
+  <!-- feedback: acc_q -> add, enable mux input 0 -->
+  <circle class="dot" cx="730" cy="192" r="4"/>
+  <path class="w" d="M730,192 V60 H280 V192 H302.5"/>
+  <circle class="dot" cx="390" cy="60" r="4"/>
+  <path class="w" d="M390,60 V170 H420"/>
+
+  <!-- ===== hit compare + register ===== -->
+  <circle class="dot" cx="780" cy="192" r="4"/>
+  <path class="w" d="M780,192 V300 H804.4"/>
+  <g id="op_cmp">
+    <ellipse class="s" cx="840" cy="310" rx="40" ry="22"/>
+    <text x="840" y="315" text-anchor="middle">&gt;= ?</text>
+  </g>
+  <line class="w" x1="880" y1="310" x2="910" y2="310"/>
+  <g id="reg_hit">
+    <rect class="s" x="910" y="255" width="70" height="110"/>
+    <path class="w" d="M910,335 L924,345 L910,355"/>
+    <circle class="s" cx="945" cy="370" r="5"/>
+    <text x="945" y="314" text-anchor="middle">hit_q</text>
+  </g>
+  <text x="945" y="392" text-anchor="middle">rst_n_i</text>
+  <line class="w" x1="980" y1="310" x2="1060" y2="310"/>
+  <text x="1060" y="303" text-anchor="end">hit_o</text>
+</svg>

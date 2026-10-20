@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1230" height="590" viewBox="0 0 1230 590"
+     font-family="Calibri, Arial, sans-serif" font-size="13">
+  <!-- module : sync_fifo -->
+  <!-- stage  : 2 - diagram L1 (gate-level + user-approved abstraction) -->
+  <!-- source : doc/spec/sync_fifo_spec.md -->
+  <!-- param  : DATA_W=8, DEPTH=16, AW=4 -->
+  <desc id="model"><![CDATA[
+// clk_i rising edge, rst_n_i asynchronous active-low.
+// Approved abstraction: handshake + flags + occupancy counter -> blk_ctrl. Pointers gate-level.
+[blk_ctrl]
+full       = (count_q == 5'd16);
+empty      = (count_q == 5'd0);
+wr_en      = wr_valid_i & ~full;
+rd_en      = rd_ready_i & ~empty;
+count_d    = (wr_en & ~rd_en) ? count_q + 5'd1 :
+             (~wr_en & rd_en) ? count_q - 5'd1 : count_q;
+count_q   <= count_d @(rst=5'd0);
+wr_ready_o = ~full;
+rd_valid_o = ~empty;
+[op_winc]
+wr_ptr_inc = wr_ptr_q + 4'd1;
+[mux_wptr]
+wr_ptr_d = wr_en ? wr_ptr_inc : wr_ptr_q;
+[reg_wptr]
+wr_ptr_q <= wr_ptr_d @(rst=4'd0);
+[op_rinc]
+rd_ptr_inc = rd_ptr_q + 4'd1;
+[mux_rptr]
+rd_ptr_d = rd_en ? rd_ptr_inc : rd_ptr_q;
+[reg_rptr]
+rd_ptr_q <= rd_ptr_d @(rst=4'd0);
+[mem_buf]
+reg [7:0] mem_q [0:15];                      // no reset
+mem_q[wr_ptr_q] <= wr_data_i @(en=wr_en);
+rd_data_o = mem_q[rd_ptr_q];                 // asynchronous read
+]]></desc>
+  <style>
+    .w{fill:none;stroke:#000;stroke-width:1.5}
+    .s{fill:#fff;stroke:#000;stroke-width:1.5}
+    .dot{fill:#000}
+    text{fill:#000}
+  </style>
+  <rect width="100%" height="100%" fill="#fff"/>
+
+  <!-- ===== inputs ===== -->
+  <text x="112" y="74" text-anchor="end">wr_data_i[7:0]</text>
+  <line class="w" x1="120" y1="70" x2="820" y2="70"/>
+  <text x="112" y="304" text-anchor="end">wr_valid_i</text>
+  <line class="w" x1="120" y1="300" x2="230" y2="300"/>
+  <text x="112" y="464" text-anchor="end">rd_ready_i</text>
+  <line class="w" x1="120" y1="460" x2="230" y2="460"/>
+
+  <!-- ===== blk_ctrl: grouped block (pin names on the wire, outside the frame) ===== -->
+  <g id="blk_ctrl">
+    <rect class="s" x="230" y="250" width="130" height="260"/>
+    <text x="295" y="384" text-anchor="middle">fifo_ctrl</text>
+  </g>
+  <text x="226" y="296" text-anchor="end">wr_valid_i</text>
+  <text x="226" y="456" text-anchor="end">rd_ready_i</text>
+  <text x="364" y="296">wr_en</text>
+  <text x="364" y="486">rd_en</text>
+  <text x="324" y="530">wr_ready_o</text>
+  <text x="266" y="530" text-anchor="end">rd_valid_o</text>
+
+  <!-- outputs from blk_ctrl (bottom lanes) -->
+  <path class="w" d="M320,510 V545 H1200"/>
+  <text x="1200" y="541" text-anchor="end">wr_ready_o</text>
+  <path class="w" d="M270,510 V565 H1200"/>
+  <text x="1200" y="561" text-anchor="end">rd_valid_o</text>
+
+  <!-- ===== write pointer ===== -->
+  <path class="w" d="M360,300 H860 V260"/>
+  <circle class="dot" cx="545" cy="300" r="4"/>
+  <line class="w" x1="545" y1="300" x2="545" y2="222.5"/>
+  <g id="op_winc">
+    <ellipse class="s" cx="470" cy="214" rx="26" ry="16"/>
+    <text x="470" y="219" text-anchor="middle">+1</text>
+  </g>
+  <line class="w" x1="496" y1="214" x2="530" y2="214"/>
+  <g id="mux_wptr">
+    <path class="s" d="M530,160 L560,175 L560,215 L530,230 Z"/>
+    <text x="535" y="188">0</text>
+    <text x="535" y="218">1</text>
+  </g>
+  <line class="w" x1="560" y1="195" x2="620" y2="195"/>
+  <g id="reg_wptr">
+    <rect class="s" x="626" y="134" width="70" height="110"/>
+    <rect class="s" x="620" y="140" width="70" height="110"/>
+    <path class="w" d="M620,220 L634,230 L620,240"/>
+    <circle class="s" cx="655" cy="255" r="5"/>
+    <text x="655" y="190" text-anchor="middle">wr_ptr_q</text>
+    <text x="655" y="206" text-anchor="middle">[3:0]</text>
+  </g>
+  <text x="655" y="277" text-anchor="middle">rst_n_i</text>
+  <path class="w" d="M696,195 H780 V150 H820"/>
+  <circle class="dot" cx="720" cy="195" r="4"/>
+  <path class="w" d="M720,195 V115 H410 V214 H444"/>
+  <circle class="dot" cx="510" cy="115" r="4"/>
+  <path class="w" d="M510,115 V184 H530"/>
+  <text x="560" y="110">wr_ptr_q[3:0]</text>
+
+  <!-- ===== read pointer ===== -->
+  <path class="w" d="M360,490 H545 V462.5"/>
+  <g id="op_rinc">
+    <ellipse class="s" cx="470" cy="454" rx="26" ry="16"/>
+    <text x="470" y="459" text-anchor="middle">+1</text>
+  </g>
+  <line class="w" x1="496" y1="454" x2="530" y2="454"/>
+  <g id="mux_rptr">
+    <path class="s" d="M530,400 L560,415 L560,455 L530,470 Z"/>
+    <text x="535" y="428">0</text>
+    <text x="535" y="458">1</text>
+  </g>
+  <line class="w" x1="560" y1="435" x2="620" y2="435"/>
+  <g id="reg_rptr">
+    <rect class="s" x="626" y="374" width="70" height="110"/>
+    <rect class="s" x="620" y="380" width="70" height="110"/>
+    <path class="w" d="M620,460 L634,470 L620,480"/>
+    <circle class="s" cx="655" cy="495" r="5"/>
+    <text x="655" y="430" text-anchor="middle">rd_ptr_q</text>
+    <text x="655" y="446" text-anchor="middle">[3:0]</text>
+  </g>
+  <text x="655" y="517" text-anchor="middle">rst_n_i</text>
+  <path class="w" d="M696,435 H950 V260"/>
+  <circle class="dot" cx="720" cy="435" r="4"/>
+  <path class="w" d="M720,435 V340 H410 V454 H444"/>
+  <circle class="dot" cx="510" cy="340" r="4"/>
+  <path class="w" d="M510,340 V424 H530"/>
+  <text x="560" y="335">rd_ptr_q[3:0]</text>
+
+  <!-- ===== storage array ===== -->
+  <g id="mem_buf">
+    <rect class="s" x="820" y="40" width="170" height="220"/>
+    <path class="w" d="M820,215 L834,225 L820,235"/>
+    <text x="905" y="140" text-anchor="middle">mem_q</text>
+    <text x="905" y="158" text-anchor="middle">16 x 8</text>
+  </g>
+  <text x="816" y="66" text-anchor="end">WD[7:0]</text>
+  <text x="816" y="146" text-anchor="end">WA[3:0]</text>
+  <text x="864" y="278">WE</text>
+  <text x="954" y="278">RA[3:0]</text>
+  <text x="994" y="146">RD[7:0]</text>
+  <line class="w" x1="990" y1="150" x2="1200" y2="150"/>
+  <text x="1200" y="146" text-anchor="end">rd_data_o[7:0]</text>
+</svg>
