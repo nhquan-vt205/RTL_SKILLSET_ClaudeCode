@@ -58,13 +58,13 @@ build:
 	cp -rf ../tc/$(TESTNAME).v run_test.v
 	vlib work
 	vmap work work
-	vlog -f compile.f | tee compile.log
+	vlog -f compile.f > compile.log 2>&1; s=$$?; cat compile.log; exit $$s
 build_cov:
 	mkdir -p log
 	cp -rf ../tc/$(TESTNAME).v run_test.v
 	vlib work
 	vmap work work
-	vlog +cover=bcesft -f compile.f
+	vlog +cover=bcesft -f compile.f > compile.log 2>&1; s=$$?; cat compile.log; exit $$s
 run:
 	vsim -debugDB -l $(TESTNAME).log -voptargs=+acc -assertdebug -c $(TB_NAME) $(SIM_ARGS) -do "log -r /*;run -all;"
 	cp $(TESTNAME).log ./log
