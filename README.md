@@ -53,6 +53,7 @@ Diagram là sơ đồ logic SVG đen trắng (MUX, register/FF, gate, ellipse op
 │       ├── references/default_tb_rules.md
 │       ├── references/sim_env/   # mẫu sim/: Makefile, compile.f, rtl.f, tb.f, pat.list, run.csh, report.csh, schematic.tcl
 │       └── scripts/check_preconditions.py, check_sim_log.py
+├── memory_bank/session_template.md   # mẫu session summary để khôi phục ngữ cảnh (protocol trong ~/.claude/CLAUDE.md)
 ├── init_project                  # tạo project mới từ khung này (mục 3)
 ├── doc/{spec/source, diagram, vplan}/     # thư mục con khác của doc/spec/ do S1 tạo khi cần
 └── rtl/  sim/  tb/
@@ -66,7 +67,7 @@ Diagram là sơ đồ logic SVG đen trắng (MUX, register/FF, gate, ellipse op
    ```bash
    mkdir My_IP && cd My_IP && init_project      # tên project = tên thư mục; --no-git, --force, -h
    ```
-   Script chép bản **đã commit** của repo này, tạo `rtl/ tb/ tc/ sim/ sim/script/ doc/{spec/source,diagram,vplan,database/input,database/output}/`, chép môi trường mô phỏng từ `rtl-s5-tb/references/sim_env/` vào `sim/` (chỉ cần sửa `sim/rtl.f`, `sim/pat.list`), tạo `README.md` và commit đầu. Project có sẵn: chép thư mục `.claude/` và gộp `CLAUDE.md`.
+   Script chép bản **đã commit** của repo này, tạo `rtl/ tb/ tc/ sim/ sim/script/ doc/{spec/source,diagram,vplan,database/input,database/output}/`, chép môi trường mô phỏng từ `rtl-s5-tb/references/sim_env/` vào `sim/` (chỉ cần sửa `sim/rtl.f`, `sim/pat.list`), chép `memory_bank/session_template.md`, tạo `README.md` và commit đầu. Project có sẵn: chép thư mục `.claude/` và gộp `CLAUDE.md`.
 2. Đặt tài liệu nguồn (requirements, kiến trúc thô, giải thuật, công thức – định dạng nào cũng được) vào `doc/spec/source/`.
 3. (Tùy chọn) đặt coding rule / template của bạn vào `coding_rules/`, `vplan_template/`, `tb_coding_rules/`. Để trống thì skill dùng rule mặc định.
 
