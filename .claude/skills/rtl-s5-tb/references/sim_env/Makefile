@@ -2,7 +2,7 @@
 # Simulation environment (shared by every module)
 #   Simulation / waveform / coverage : QuestaSim 2021 (vlog, vsim, vcover)
 #   Schematic                         : Vivado (RTL elaboration of rtl.f)
-# Test case TC_<MODULE>_<NNN> = testcases/TC_<MODULE>_<NNN>.v, run on tb/tb_<module>.v
+# Test case TC_<MODULE>_<NNN> = tc/TC_<MODULE>_<NNN>.v, run on tb/tb_<module>.v
 # Example run string: make TESTNAME={name_of_testcase} {optional}
 #                     make TESTNAME=TC_MY_MODULE_002 all
 #                     make DATA_IN=<input.txt> DATA_OUT=<output.txt> all   (paths relative to sim/)
@@ -51,13 +51,13 @@ all_cov: clean_sim build_cov run_cov
 
 build:
 	mkdir -p log
-	cp -rf ../testcases/$(TESTNAME).v run_test.v
+	cp -rf ../tc/$(TESTNAME).v run_test.v
 	vlib work
 	vmap work work
 	vlog -f compile.f | tee compile.log
 build_cov:
 	mkdir -p log
-	cp -rf ../testcases/$(TESTNAME).v run_test.v
+	cp -rf ../tc/$(TESTNAME).v run_test.v
 	vlib work
 	vmap work work
 	vlog +cover=bcesft -f compile.f

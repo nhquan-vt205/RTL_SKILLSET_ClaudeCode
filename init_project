@@ -49,15 +49,22 @@ HAD_README=0; [ -e "$DST/README.md" ] && HAD_README=1
 git -C "$SKILLSET" archive --format=tar HEAD | tar -x --skip-old-files -C "$DST"
 rm -f "$DST/init_project"
 
-# ---- 2. Project directory tree ------------------------------------------------
-for d in rtl tb testcases sim sim/script \
+# ---- 2. Shared simulation environment (single source: S5 sim_env) -----------
+mkdir -p "$DST/sim"
+for f in "$DST/.claude/skills/rtl-s5-tb/references/sim_env/"*; do
+    [ -e "$DST/sim/$(basename "$f")" ] || cp "$f" "$DST/sim/"
+done
+rm -f "$DST/sim/.gitkeep"
+
+# ---- 3. Project directory tree ------------------------------------------------
+for d in rtl tb tc sim sim/script \
          doc/spec/source doc/diagram doc/vplan \
          doc/database/input doc/database/output; do
     mkdir -p "$DST/$d"
     [ -n "$(ls -A "$DST/$d")" ] || touch "$DST/$d/.gitkeep"
 done
 
-# ---- 3. Project README (skillset README describes the skillset, not this IP) --
+# ---- 4. Project README (skillset README describes the skillset, not this IP) --
 if [ "$HAD_README" -eq 0 ]; then
     cat > "$DST/README.md" <<README
 # $NAME
@@ -69,7 +76,7 @@ Flow and rules: see \`CLAUDE.md\`.
 README
 fi
 
-# ---- 4. Git -------------------------------------------------------------------
+# ---- 5. Git -------------------------------------------------------------------
 if [ "$DO_GIT" -eq 1 ] && ! git -C "$DST" rev-parse --git-dir >/dev/null 2>&1; then
     git -C "$DST" init -q -b main
     git -C "$DST" add -A

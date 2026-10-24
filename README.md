@@ -51,7 +51,9 @@ Diagram là sơ đồ logic SVG đen trắng (MUX, register/FF, gate, ellipse op
 │   └── rtl-s5-tb/                # S5 (tùy chọn): testbench self-checking
 │       ├── tb_coding_rules/      # (tùy chọn) rule testbench của bạn
 │       ├── references/default_tb_rules.md
+│       ├── references/sim_env/   # mẫu sim/: Makefile, compile.f, rtl.f, tb.f, pat.list, run.csh, report.csh, schematic.tcl
 │       └── scripts/check_preconditions.py, check_sim_log.py
+├── init_project                  # tạo project mới từ khung này (mục 3)
 ├── doc/{spec/source, diagram, vplan}/     # thư mục con khác của doc/spec/ do S1 tạo khi cần
 └── rtl/  sim/  tb/
 ```
@@ -60,11 +62,15 @@ Diagram là sơ đồ logic SVG đen trắng (MUX, register/FF, gate, ellipse op
 
 ## 3. Cài đặt
 
-1. Giải nén vào thư mục gốc project. Đã có `CLAUDE.md` riêng thì gộp nội dung.
+1. Tạo project mới bằng `init_project` (cài một lần: `ln -s <đường dẫn repo>/init_project ~/.local/bin/init_project`):
+   ```bash
+   mkdir My_IP && cd My_IP && init_project      # tên project = tên thư mục; --no-git, --force, -h
+   ```
+   Script chép bản **đã commit** của repo này, tạo `rtl/ tb/ tc/ sim/ sim/script/ doc/{spec/source,diagram,vplan,database/input,database/output}/`, chép môi trường mô phỏng từ `rtl-s5-tb/references/sim_env/` vào `sim/` (chỉ cần sửa `sim/rtl.f`, `sim/pat.list`), tạo `README.md` và commit đầu. Project có sẵn: chép thư mục `.claude/` và gộp `CLAUDE.md`.
 2. Đặt tài liệu nguồn (requirements, kiến trúc thô, giải thuật, công thức – định dạng nào cũng được) vào `doc/spec/source/`.
 3. (Tùy chọn) đặt coding rule / template của bạn vào `coding_rules/`, `vplan_template/`, `tb_coding_rules/`. Để trống thì skill dùng rule mặc định.
 
-Công cụ: Python 3 (bắt buộc), `iverilog` và/hoặc `verilator` (miễn phí, đủ cho cả flow).
+Công cụ: Python 3 (bắt buộc), `iverilog` và/hoặc `verilator` (miễn phí, đủ cho S1–S3 và mô phỏng thay thế). Mô phỏng S5 qua `sim/Makefile` cần QuestaSim; `make schematic` cần Vivado; `run.csh`/`report.csh` cần `tcsh`.
 
 ## 4. Sử dụng
 
@@ -76,7 +82,7 @@ Công cụ: Python 3 (bắt buộc), `iverilog` và/hoặc `verilator` (miễn p
 | `/rtl-s2-diagram <m> --from a,b --to x,y [--part p]` | Thêm góc nhìn `<m>_<part>.svg` chỉ chứa logic từ tín hiệu `a,b` tới `x,y` (S3 không đọc). |
 | `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, compile/lint sạch. |
 | `/rtl-s4-vplan <m>` | (tùy chọn) Vplan direct test tối thiểu. |
-| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/<m>/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`) + script chạy, mô phỏng nếu có simulator. |
+| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`; mỗi item vplan một file `tc/<ID>.v`) + cập nhật `sim/rtl.f`, `sim/pat.list`, mô phỏng bằng QuestaSim (`make -C sim all TESTNAME=<ID>`) nếu có. |
 
 Thiết kế nhiều cấp: S2→S3 cho các leaf trước, rồi block, cuối cùng top. Có thể nêu nhiều module trong một lệnh; không có lệnh "all" – chủ ý để bạn duyệt từng module.
 
@@ -101,7 +107,7 @@ Chỉ khi cần
 
 Tùy chọn (S4–S5)
   doc/vplan/<m>_vplan.*
-  tb/<m>/tb_<m>.v, sim/<m>/<m>.f, run.sh
+  tb/tb_<m>.v, tc/<ID>.v, sim/rtl.f, sim/pat.list
 ```
 
 ## 6. Gate của từng stage
@@ -126,7 +132,7 @@ Script phục vụ workflow – không bao giờ cần tạo file giả để qu
 | `check_interface.py` | Bảng port: hướng, width, hậu tố; ở chế độ phân cấp thêm port treo, sai hướng cha–con/anh em, lệch width, input nhiều nguồn |
 | `lint_svg.py` | Diagram SVG: XML, header/level, chỉ đen trắng, không phần tử cấm, chữ tiếng Anh, tiền tố id, model khớp nhóm, luật theo level, tên port không nằm trong khối, đủ port (hỗ trợ gom bus `prefix_*`); không kiểm bố cục |
 | `check_ports.py` | Port list RTL so với bảng port (tính width từ parameter, kể cả `$clog2`) |
-| `check_sim_log.py` | Log S5 (`-- <item name> test --`, `[<time>] <case> PASS\|FAIL \| expected: … \| actual: …`, `[SUMMARY]`): map tên item về ID vplan; mọi item vplan có case và đều PASS, `[SUMMARY]` khớp số dòng PASS/FAIL, không TIMEOUT |
+| `check_sim_log.py` | Log S5, một hay nhiều file `sim/log/<ID>.log` (`-- <item name> test --`, `[<time>] <case> PASS\|FAIL \| expected: … \| actual: …`, `[SUMMARY]`, `Test_result`): map tên item về ID vplan; mọi item vplan có case và đều PASS, `[SUMMARY]`/`Test_result` khớp từng log, không TIMEOUT |
 
 ## 8. Lưu ý
 
