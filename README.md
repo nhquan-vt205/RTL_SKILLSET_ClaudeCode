@@ -67,7 +67,7 @@ Diagram là sơ đồ logic SVG đen trắng (MUX, register/FF, gate, ellipse op
    ```bash
    mkdir My_IP && cd My_IP && init_project      # tên project = tên thư mục; --no-git, --force, -h
    ```
-   Script chép bản **đã commit** của repo này, tạo `rtl/ tb/ tc/ sim/ sim/script/ doc/{spec/source,diagram,vplan,database/input,database/output}/`, chép môi trường mô phỏng từ `rtl-s5-tb/references/sim_env/` vào `sim/` (chỉ cần sửa `sim/rtl.f`, `sim/pat.list`), chép `memory_bank/session_template.md`, tạo `README.md` và commit đầu. Project có sẵn: chép thư mục `.claude/` và gộp `CLAUDE.md`.
+   Script chép bản **đã commit** của repo này, tạo `rtl/ tb/ tc/ sim/ sim/script/ doc/{spec/source,diagram,vplan,database/input,database/output}/`, chép môi trường mô phỏng từ `rtl-s5-tb/references/sim_env/` vào `sim/` (`sim/rtl.f`, `sim/pat.list` do S1–S5 điền), chép `memory_bank/session_template.md`, tạo `README.md` và commit đầu. Project có sẵn: chép thư mục `.claude/` và gộp `CLAUDE.md`.
 2. Đặt tài liệu nguồn (requirements, kiến trúc thô, giải thuật, công thức – định dạng nào cũng được) vào `doc/spec/source/`.
 3. (Tùy chọn) đặt coding rule / template của bạn vào `coding_rules/`, `vplan_template/`, `tb_coding_rules/`. Để trống thì skill dùng rule mặc định.
 
@@ -77,15 +77,17 @@ Công cụ: Python 3 (bắt buộc). Compile check RTL ở S3 (`make -C sim lint
 
 | Lệnh | Việc |
 | --- | --- |
-| `/rtl-s1-spec` | Đọc `doc/spec/source/`. Input chưa đủ → báo lỗi + đề xuất sửa trong chat, không ghi file. Đủ → spec tối thiểu (module nhỏ: một file) + trạng thái PASS/FAIL. |
+| `/rtl-s1-spec` | Đọc `doc/spec/source/`. Input chưa đủ → báo lỗi + đề xuất sửa trong chat, không ghi file. Đủ → spec tối thiểu (module nhỏ: một file) + trạng thái PASS/FAIL; PASS → ghi mọi module ở dạng comment vào `sim/rtl.f`, `sim/pat.list` (nhóm theo nhánh git). |
 | `/rtl-s1-spec --recheck` | Chỉ đánh giá input. |
 | `/rtl-s2-diagram <m> [--level Lx] [--cloud …] [--block …]` | Sơ đồ logic của module: một file `<m>.svg` đen trắng (mở bằng Chrome/Edge, chèn được vào Word/PPT), nhúng model phương trình cho S3. L1/L0: đề xuất phần gom thành cloud/khối và chờ bạn duyệt (`--cloud`/`--block` để chỉ định sẵn). |
 | `/rtl-s2-diagram <m> --from a,b --to x,y [--part p]` | Thêm góc nhìn `<m>_<part>.svg` chỉ chứa logic từ tín hiệu `a,b` tới `x,y` (S3 không đọc). |
-| `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, thêm vào `sim/rtl.f`, compile/lint sạch qua `make -C sim lint TOP=<m>`. |
+| `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, bỏ comment dòng của nó trong `sim/rtl.f`, compile/lint sạch qua `make -C sim lint TOP=<m>`. |
 | `/rtl-s4-vplan <m>` | (tùy chọn) Vplan direct test tối thiểu. |
 | `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`; mỗi item vplan một file `tc/<ID>.v`) + cập nhật `sim/rtl.f`, `sim/pat.list`, mô phỏng bằng QuestaSim (`make -C sim all TESTNAME=<ID>`) nếu có. |
 
 Thiết kế nhiều cấp: S2→S3 cho các leaf trước, rồi block, cuối cùng top. Có thể nêu nhiều module trong một lệnh; không có lệnh "all" – chủ ý để bạn duyệt từng module.
+
+Nhánh git: `main` dừng ở S1. Từ S2, mỗi module con trực tiếp của top có chức năng riêng làm trên nhánh `feat/<m>` (module con của nó và module chỉ để làm instance đi cùng nhánh; top đi `feat/<top>` sau khi các nhánh con đã merge); skill tự chuyển nhánh, commit đầu ra của stage và `git push -u origin feat/<m>`, bạn tự mở PR/merge vào `main`. Nhánh của từng module ghi ở cột `Branch` của `spec_status.md`.
 
 ## 5. Tài liệu được tạo
 

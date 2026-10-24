@@ -27,6 +27,8 @@ python3 .claude/skills/rtl-s2-diagram/scripts/check_preconditions.py --stage 2 -
 
 Gọi một lần với **mọi module của lệnh**, kèm đúng `--level` người dùng đưa; mỗi module có một khối kết quả riêng. Khối nào `KHÔNG ĐỦ ĐIỀU KIỆN` → bỏ qua module đó, báo các dòng `[THIẾU]` và cách khắc phục. Mã thoát 2 (gọi sai) → dừng cả lệnh, báo nguyên văn lỗi. Dòng `[INFO]` cho biết chế độ (đơn/phân cấp), file spec và bảng port cần đọc, level đề xuất, file định dạng cũ cần xóa. Lệnh có `--from/--to` mà nêu nhiều module → dừng, đề nghị gọi riêng từng module.
 
+**Nhánh git** (mục "Nhánh git" của `CLAUDE.md`): sau gate, chuyển sang nhánh `feat/<b>` của `<m>` (lệnh nhiều module mà khác nhánh → gọi riêng từng nhánh) (cột `Branch` của `spec_status.md`; chế độ đơn `feat/<m>`), tạo từ `main` nếu chưa có. Hoàn thành stage → commit đúng các file đầu ra của S2 và `git push -u origin feat/<b>`; không merge, không push `main`.
+
 ## Bước 1 – Chọn level
 
 Ưu tiên: `--level` → level trong spec/`spec_status.md` → mặc định (có module con → L0, leaf → L2). Được lệch đề xuất nếu đọc spec thấy rõ không hợp (vd. leaf "nhỏ" có mảng 64 thanh ghi và nhiều khối điều khiển → L1); nêu lý do trong báo cáo.

@@ -26,6 +26,8 @@ python3 .claude/skills/rtl-s4-vplan/scripts/check_preconditions.py --stage 4 --m
 
 Cần spec PASS, bảng port, `rtl/<m>.sv|.v`. Mã thoát ≠ 0 → bỏ qua module đó, báo `[THIẾU]`. Dòng `[INFO] phạm vi tích hợp` nghĩa là DUT gồm cả module con → test theo kịch bản tích hợp.
 
+**Nhánh git** (mục "Nhánh git" của `CLAUDE.md`): sau gate, chuyển sang nhánh `feat/<b>` của `<m>` (cột `Branch` của `spec_status.md`; chế độ đơn `feat/<m>`), tạo từ `main` nếu chưa có. Hoàn thành stage → commit đúng các file đầu ra của S4 và `git push -u origin feat/<b>`; không merge, không push `main`.
+
 ## Bước 1 – Định dạng
 
 Có file trong `vplan_template/` (trừ README.md) → theo đúng template: định dạng (.md/.xlsx/.docx/.csv), cột, quy ước ID; .xlsx/.docx giữ nguyên sheet/style, chỉ điền dữ liệu; nhiều template → hỏi dùng cái nào. Thư mục trống → định dạng Markdown mặc định trong `references/test_selection.md`.

@@ -15,7 +15,7 @@ Mục tiêu: RTL **Verilog-2005, đúng chức năng trong spec, đơn giản, d
 
 - Chỉ implement đúng module(s) được nêu tên; không nhận "all".
 - Module có module con: viết instance theo bảng port của con. Con chưa có RTL → vẫn instance, liệt kê trong báo cáo; **không tự viết module con**.
-- Không sửa `doc/spec/`, `doc/diagram/`. Đầu ra chỉ trong `rtl/`, cộng dòng `../rtl/<m>.v` trong `sim/rtl.f` để kiểm compile. Không tạo file báo cáo, traceability hay testbench.
+- Không sửa `doc/spec/`, `doc/diagram/`. Đầu ra chỉ trong `rtl/`, cộng việc bỏ comment dòng `../rtl/<m>.v` trong `sim/rtl.f` để kiểm compile. Không tạo file báo cáo, traceability hay testbench.
 
 ## Bước 0 – Gate
 
@@ -24,6 +24,8 @@ python3 .claude/skills/rtl-s3-rtl/scripts/check_preconditions.py --stage 3 --mod
 ```
 
 Cần: spec đã PASS, bảng port của module, diagram `doc/diagram/<m>/<m>.svg`. `<m>_notes.md` không bắt buộc – có thì đọc. Diagram đầu vào chỉ là `<m>.svg`; góc nhìn scope `<m>_<part>.svg` không đọc; file định dạng cũ (`.mmd`, `.html`) không còn được nhận – chạy lại `/rtl-s2-diagram <m>`. Mã thoát ≠ 0 → bỏ qua module đó, báo các dòng `[THIẾU]` và lệnh cần chạy trước. Dòng `[INFO]` cho biết file cần đọc, level và module con chưa có RTL.
+
+**Nhánh git** (mục "Nhánh git" của `CLAUDE.md`): sau gate, chuyển sang nhánh `feat/<b>` của `<m>` (cột `Branch` của `spec_status.md`; chế độ đơn `feat/<m>`), tạo từ `main` nếu chưa có. Hoàn thành stage → commit đúng các file đầu ra của S3 và `git push -u origin feat/<b>`; không merge, không push `main`.
 
 ## Bước 1 – Coding rule
 
@@ -73,7 +75,7 @@ Spec/diagram sai hoặc thiếu đến mức không viết được đúng chứ
    ```
 2. **Compile/lint qua `sim/`** – không tự gõ lệnh simulator; đọc rồi dùng môi trường mô phỏng chung:
    - Đọc `sim/Makefile` và `sim/rtl.f`. Thiếu `sim/Makefile` → chép các file chưa có từ `.claude/skills/rtl-s5-tb/references/sim_env/` (không ghi đè file đã có); Makefile có sẵn mà chưa có target `lint` → báo, đề xuất chép target từ mẫu, ghi "chưa lint".
-   - `sim/rtl.f`: thêm `../rtl/<m>.v` nếu chưa có, sau mọi module con và trước module cha; không xóa dòng của module khác; dòng chứa `//` là comment.
+   - `sim/rtl.f`: S1 đã ghi sẵn `// ../rtl/<m>.v` → bỏ comment dòng đó (thành `../rtl/<m>.v`). Chưa có dòng nào của `<m>` → thêm, sau mọi module con và trước module cha. Không sửa dòng của module khác; dòng chứa `//` là comment, không được biên dịch.
    - Chạy (cần QuestaSim, `vlog` trong PATH):
      ```bash
      make -C sim lint TOP=<m>      # vlog -lint mọi file trong rtl.f (thư viện lint_work mới) + vopt cây <m>; log: sim/log/lint.log
@@ -94,7 +96,7 @@ Lỗi lint/port do code của chính stage này → sửa rồi chạy lại đ�
 
 ## Đầu ra
 
-`rtl/<m>.v` (Verilog-2005; cấu trúc thư mục khác chỉ khi coding rule quy định) và dòng của nó trong `sim/rtl.f`. Một module một file. Làm lại module mà còn `rtl/<m>.sv` cũ do S3 tạo trước đây → xóa file `.sv` đó để không có hai bản.
+`rtl/<m>.v` (Verilog-2005; cấu trúc thư mục khác chỉ khi coding rule quy định) và dòng của nó trong `sim/rtl.f` (đã bỏ comment). Một module một file. Làm lại module mà còn `rtl/<m>.sv` cũ do S3 tạo trước đây → xóa file `.sv` đó để không có hai bản.
 
 ## Báo cáo cuối (chỉ trong chat)
 
