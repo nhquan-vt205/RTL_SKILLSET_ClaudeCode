@@ -21,6 +21,8 @@ foreach pat (`cat pat.list | sed '/\/\//d'`)
     else
         set tm = `grep "End time" $sim_log | awk -F"[ :,]" '{print $5 ":" $6 ":" $7 " " $9 " " $10 " " $11}'`
         set res = `grep "Test_result" $sim_log | awk '{print $3}'`
+        # No Test_result: build or design loading failed (errors are in the log)
+        if ("$res" == "") set res = "ERROR"
         #echo "DBG $tm $res"
         printf "|%-40s |%-30s |%-20s |\n" " $pat" " $tm" " $res"                                          >> $log
         printf "|------------------------------------------------------------------------------------------------|\n" >> $log

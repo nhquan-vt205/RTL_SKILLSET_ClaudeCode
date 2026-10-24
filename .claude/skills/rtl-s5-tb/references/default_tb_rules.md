@@ -329,12 +329,12 @@ Mẫu ở `references/sim_env/` (`init_project` chép sẵn vào `sim/` khi tạ
 
 | File | Nội dung |
 | --- | --- |
-| `Makefile` | QuestaSim 2021: `build`, `run`, `all`/`all_wave`/`all_cov` (luôn `clean_sim` trước), `wave`, `build_cov`, `run_cov` (+ report riêng của test ở `coverage/<ID>/`), `gen_cov`/`gen_html` (dựng lại `IP.ucdb` từ đầu chỉ từ `<ID>.ucdb` của các test trong `pat.list`, không gộp `IP.ucdb` cũ), `clean_sim` (file tạm của một lần chạy, giữ `*.ucdb`, `coverage/`), `clean` (xóa hết, kể cả coverage), `lint` (compile `rtl.f` không cần TB, `TOP=<m>` elaborate cây `<m>` – dùng ở S3), `help`; Vivado: `schematic` (`SCH=<instance>`, `PART=<device>`); `gen_data`. `TESTNAME` mặc định = dòng đầu `pat.list`; `MODULE` suy ra từ `TESTNAME` (`TC_<M>_<NNN>` → `<m>`), `TB_NAME = tb_<m>`. |
+| `Makefile` | QuestaSim 2021: `build`, `run`, `all`/`all_wave`/`all_cov` (luôn `clean_sim` trước), `wave`, `build_cov`, `run_cov` (+ report riêng của test ở `coverage/<ID>/`), `gen_cov`/`gen_html` (dựng lại `IP.ucdb` từ đầu chỉ từ `<ID>.ucdb` của các test trong `pat.list`, không gộp `IP.ucdb` cũ), `clean_sim` (file tạm của một lần chạy, giữ `*.ucdb`, `coverage/`), `clean` (xóa hết, kể cả coverage), `lint` (compile `rtl.f` không cần TB, `TOP=<m>` elaborate cây `<m>` – dùng ở S3), `help`; Vivado: `schematic` (`SCH=<instance>`, `PART=<device>`); `gen_data`. `vlog`/`vsim` lỗi → `make` dừng, in lại mọi dòng `** Error`/`** Fatal` (file, dòng) trong khối `ERRORS` ở cuối, và ghi log lỗi vào `log/<ID>.log` (không để log PASS cũ). `TESTNAME` mặc định = dòng đầu `pat.list`; `MODULE` suy ra từ `TESTNAME` (`TC_<M>_<NNN>` → `<m>`), `TB_NAME = tb_<m>`. |
 | `compile.f` | `-timescale 1ns/1ps`, `+incdir+.`, `-f rtl.f`, `-f tb.f`. |
 | `rtl.f` | Mọi file `rtl/*.v`, module con trước module cha, dạng `../rtl/<file>.v`. Dòng chứa `//` là comment. S3 thêm `rtl/<m>.v` khi viết RTL; S5 thêm file còn thiếu của cây `<m>`. |
 | `tb.f` | `../tb/${TB_NAME}.v` (QuestaSim thay biến môi trường do Makefile export). |
 | `pat.list` | ID testcase, mỗi dòng một ID; dòng chứa `//` bị bỏ qua. S5 thêm ID của `<m>`. |
-| `run.csh` / `report.csh` | Chạy hết `pat.list` (`./run.csh`; `./run.csh cov` chạy `make clean` một lần trước để regression coverage bắt đầu từ đầu) / bảng PAT_NAME – RUN_DATE – RESULT từ `log/<ID>.log` (`End time`, `Test_result`). Cần `tcsh`. |
+| `run.csh` / `report.csh` | Chạy hết `pat.list` (`./run.csh`; `./run.csh cov` chạy `make clean` một lần trước để regression coverage bắt đầu từ đầu) / bảng PAT_NAME – RUN_DATE – RESULT từ `log/<ID>.log` (`End time`, `Test_result`; log không có `Test_result` – build/load lỗi – là `ERROR`). Cần `tcsh`. |
 | `schematic.tcl` | Vivado: đọc `rtl.f`, `synth_design -rtl -top <m>`, mở schematic. |
 
 Đầu ra mô phỏng (`work/`, `lint_work/`, `log/`, `*.log`, `*.wlf`, `vsim.dbg`, `modelsim.ini`, `*.ucdb`, `coverage/`, `covhtmlreport/`, `run_test.v`, `.Xil/`) là file sinh ra, không phải tài liệu cần giữ; `make clean` xóa phần lớn.

@@ -82,6 +82,8 @@ python3 .claude/skills/rtl-s5-tb/scripts/check_sim_log.py sim/log/<ID_1>.log sim
 
 `check_sim_log.py` nhận một hay nhiều log, bỏ tiền tố `# ` của transcript Questa, map header `-- <item name> test --` về ID vplan theo tên item, rồi kiểm: item vplan chưa chạy/không có case, case FAIL, dòng case sai định dạng, case trước mọi header, header không có trong vplan/trùng giữa các log, `[SUMMARY]` thiếu/trùng/lệch số dòng PASS/FAIL và `Test_result` thiếu/sai trong từng log, `[TIMEOUT]`/fatal. Vplan dùng ID khác `TC_…` mà không phải bảng có cột `ID` → thêm `--id-re '<regex>'`.
 
+`make` dừng ở `build`/`run` (lỗi biên dịch hoặc dựng thiết kế) → đọc khối `ERRORS` cuối output hoặc `sim/log/<ID>.log` (đủ file, dòng của từng lỗi); lỗi trong `tb/`, `tc/` → sửa, lỗi trong `rtl/` → phân loại như dưới.
+
 Test FAIL → phân loại:
 - Lỗi testbench (stimulus/chu kỳ kiểm sai so với vplan, golden model sai so với spec) → sửa TB/testcase, chạy lại.
 - Lỗi RTL hoặc vplan → **không sửa**; báo test ID, triệu chứng, nghi ngờ ở file/dòng nào, cần sửa ở S3 hay S4.

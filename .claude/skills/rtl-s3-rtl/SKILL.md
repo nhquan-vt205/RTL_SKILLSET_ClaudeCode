@@ -79,6 +79,7 @@ Spec/diagram sai hoặc thiếu đến mức không viết được đúng chứ
      make -C sim lint TOP=<m>      # vlog -lint mọi file trong rtl.f (thư viện lint_work mới) + vopt cây <m>; log: sim/log/lint.log
      make -C sim lint              # khi còn module con chưa có RTL: chỉ compile, không elaborate
      ```
+   - Lỗi → `make` dừng và in lại mọi dòng `** Error` (file, dòng) trong khối `ERRORS` ở cuối; log đầy đủ ở `sim/log/lint.log`.
    - Mục tiêu 0 error, không còn warning nghiêm trọng; warning còn lại phải giải thích được. File `.v` được biên dịch ở chế độ Verilog (không `-sv`): lỗi cú pháp do construct SV → sửa code, không chuyển sang SV. Lỗi ở file của module khác trong `rtl.f` → báo, không sửa. Module con cũ còn `.sv` → báo, không tự viết lại. Không có QuestaSim → ghi "chưa lint" và lệnh trên.
 3. **Tự rà lỗi thật:**
    - Verilog-2005 thuần: không còn construct SV nào (`logic`, `always_ff`, `always_comb`, `typedef`, `enum`, `struct`, `'0`…); tín hiệu gán trong `always` là `reg`, gán bằng `assign` là `wire`.

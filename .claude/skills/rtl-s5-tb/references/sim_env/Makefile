@@ -43,6 +43,13 @@ VIVADO_DIRS  := $(foreach d,$(HOME)/opt/Xilinx /tools/Xilinx /opt/Xilinx, \
 VIVADO_BIN   ?= $(if $(XILINX_VIVADO),$(XILINX_VIVADO)/bin,$(lastword $(sort $(VIVADO_DIRS))))
 VIVADO       := $(if $(VIVADO_BIN),$(VIVADO_BIN)/)vivado
 
+# After a failed tool step (exit status in s): print every error/fatal line of log $(1)
+# again at the end, with file and line, so they are not lost in a long log
+SHOW_ERRORS = if [ $$s -ne 0 ]; then \
+	  echo "==================== ERRORS ($(1)) ===================="; \
+	  grep -E '^([\#] )?\*\* (Error|Fatal)|Error loading design' $(1); \
+	  echo "========================================================"; fi
+
 #==============================
 # Prerequisites run in the written order (clean_sim first)
 .NOTPARALLEL:
@@ -53,26 +60,28 @@ all_wave: clean_sim build run wave
 
 all_cov: clean_sim build_cov run_cov
 
+# Build/run: a failed vlog/vsim stops make; its log goes to log/$(TESTNAME).log (no stale
+# PASS log of an earlier run) and the error lines are printed again at the end.
 build:
 	mkdir -p log
 	cp -rf ../tc/$(TESTNAME).v run_test.v
 	vlib work
 	vmap work work
-	vlog -f compile.f > compile.log 2>&1; s=$$?; cat compile.log; exit $$s
+	vlog -f compile.f > compile.log 2>&1; s=$$?; cat compile.log; \
+	  [ $$s -eq 0 ] || cp compile.log log/$(TESTNAME).log; $(call SHOW_ERRORS,compile.log); exit $$s
 build_cov:
 	mkdir -p log
 	cp -rf ../tc/$(TESTNAME).v run_test.v
 	vlib work
 	vmap work work
-	vlog +cover=bcesft -f compile.f > compile.log 2>&1; s=$$?; cat compile.log; exit $$s
+	vlog +cover=bcesft -f compile.f > compile.log 2>&1; s=$$?; cat compile.log; \
+	  [ $$s -eq 0 ] || cp compile.log log/$(TESTNAME).log; $(call SHOW_ERRORS,compile.log); exit $$s
 run:
-	vsim -debugDB -l $(TESTNAME).log -voptargs=+acc -assertdebug -c $(TB_NAME) $(SIM_ARGS) -do "log -r /*;run -all;"
-	cp $(TESTNAME).log ./log
-	mv $(TESTNAME).log sim.log
+	vsim -debugDB -l $(TESTNAME).log -voptargs=+acc -assertdebug -c $(TB_NAME) $(SIM_ARGS) -do "log -r /*;run -all;"; s=$$?; \
+	  cp $(TESTNAME).log ./log; mv $(TESTNAME).log sim.log; $(call SHOW_ERRORS,sim.log); exit $$s
 run_cov:
-	vsim -coverage -l $(TESTNAME).log -c $(TB_NAME) $(SIM_ARGS) -voptargs="+cover=bcesft" -assertdebug -do "coverage save -onexit $(TESTNAME).ucdb; log -r /*;run -all"
-	cp $(TESTNAME).log ./log
-	mv $(TESTNAME).log sim.log
+	vsim -coverage -l $(TESTNAME).log -c $(TB_NAME) $(SIM_ARGS) -voptargs="+cover=bcesft" -assertdebug -do "coverage save -onexit $(TESTNAME).ucdb; log -r /*;run -all"; s=$$?; \
+	  cp $(TESTNAME).log ./log; mv $(TESTNAME).log sim.log; $(call SHOW_ERRORS,sim.log); exit $$s
 	mkdir -p coverage/$(TESTNAME)
 	vcover report $(TESTNAME).ucdb -output coverage/$(TESTNAME)/summary_report.txt
 	vcover report -zeros -details -code bcesft -annotate -All -codeAll $(TESTNAME).ucdb -output coverage/$(TESTNAME)/detail_report.txt
@@ -82,8 +91,11 @@ lint:
 	mkdir -p log
 	rm -rf lint_work
 	vlib lint_work
-	vlog -lint -work lint_work -f rtl.f > log/lint.log 2>&1; s=$$?; cat log/lint.log; exit $$s
-	$(if $(TOP),vopt -work lint_work $(TOP) -o $(TOP)_lint >> log/lint.log 2>&1; s=$$?; tail -4 log/lint.log; exit $$s)
+	vlog -lint -work lint_work -f rtl.f > log/lint.log 2>&1; s=$$?; cat log/lint.log; \
+	  $(call SHOW_ERRORS,log/lint.log); exit $$s
+	$(if $(TOP),vopt -work lint_work $(TOP) -o $(TOP)_lint > log/lint_vopt.log 2>&1; s=$$?; \
+	  cat log/lint_vopt.log; cat log/lint_vopt.log >> log/lint.log; rm -f log/lint_vopt.log; \
+	  $(call SHOW_ERRORS,log/lint.log); exit $$s)
 wave:
 	vsim -i -view vsim.wlf -do "add wave vsim:/$(TB_NAME)/*; radix -$(RADIX)" &
 schematic:
