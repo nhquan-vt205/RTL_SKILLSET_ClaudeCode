@@ -1,6 +1,6 @@
 # Rule RTL mặc định (chỉ dùng cho chỗ coding_rules/ không nói tới)
 
-File trong `coding_rules/` luôn thắng. Mục tiêu của các rule dưới: code đọc được, **nhìn vào thấy phần cứng** (thanh ghi → logic tổ hợp → mux/số học/so sánh → thanh ghi → output), tổng hợp được, chạy được trên công cụ miễn phí (Icarus Verilog ≥ 11 với `-g2005`, Verilator ≥ 5 với `--default-language 1364-2005`).
+File trong `coding_rules/` luôn thắng. Mục tiêu của các rule dưới: code đọc được, **nhìn vào thấy phần cứng** (thanh ghi → logic tổ hợp → mux/số học/so sánh → thanh ghi → output), tổng hợp được, compile sạch qua `make -C sim lint TOP=<m>` (QuestaSim, chế độ Verilog).
 
 ## Ngôn ngữ và file
 

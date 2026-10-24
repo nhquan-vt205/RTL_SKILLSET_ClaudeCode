@@ -65,11 +65,12 @@ Cần spec PASS, bảng port, RTL của module **và mọi module con** (để m
 
 ## Bước 3 – Môi trường `sim/` và chạy
 
-`sim/` dùng chung cho mọi module; mẫu ở `references/sim_env/` (`init_project` đã chép sẵn khi tạo project):
+`sim/` dùng chung cho mọi module; mẫu ở `references/sim_env/` (`init_project` đã chép sẵn khi tạo project). Trước khi chạy, đọc `sim/Makefile`, `compile.f`, `tb.f`, `rtl.f`, `pat.list` để dùng đúng target và biến của bản đang có; mọi lần biên dịch/mô phỏng đều đi qua `sim/Makefile`, không tự gõ lệnh simulator.
+
 
 - `Makefile`, `compile.f`, `tb.f`, `run.csh`, `report.csh`, `schematic.tcl` chưa có → chép từ `references/sim_env/`. Đã có → **không ghi đè** (có thể là bản người dùng đã chỉnh); khác mẫu thì nêu trong báo cáo.
 - `rtl.f`, `pat.list` chưa có → chép mẫu (chỉ có dòng comment `//`) rồi thêm như dưới.
-- `rtl.f`: mọi file trong `rtl/`, module con trước module cha, đường dẫn `../rtl/<file>.v`, mỗi dòng một file. Thêm file RTL mới của cây `<m>` nếu chưa có; không xóa dòng của module khác.
+- `rtl.f`: mọi file trong `rtl/`, module con trước module cha, đường dẫn `../rtl/<file>.v`, mỗi dòng một file (S3 đã thêm khi viết RTL). Thêm file RTL còn thiếu của cây `<m>`; không xóa dòng của module khác.
 - `pat.list`: thêm ID các testcase của `<m>` (mỗi dòng một ID, theo thứ tự vplan); giữ dòng của module khác; dòng chứa `//` là comment (cũng bỏ qua trong `rtl.f`).
 
 Makefile suy ra `MODULE` từ `TESTNAME` (`TC_<M>_<NNN>` → `<m>` chữ thường), `TB_NAME = tb_<m>`; `tb.f` dùng `${TB_NAME}`. Chạy nếu có QuestaSim (`vsim` trong PATH), từng testcase một (không cần `csh`):
@@ -79,15 +80,13 @@ for t in <ID_1> <ID_2> ...; do make -C sim all TESTNAME=$t; done
 python3 .claude/skills/rtl-s5-tb/scripts/check_sim_log.py sim/log/<ID_1>.log sim/log/<ID_2>.log ... doc/vplan/<m>_vplan.<ext>
 ```
 
-Không có QuestaSim mà có Icarus → chạy thay từ `sim/` (cùng file `.v` Verilog-2005, không chuyển sang SystemVerilog): `cp ../tc/<ID>.v run_test.v && iverilog -g2005 -I. -o tb.vvp $(grep -v '^ *//' rtl.f) ../tb/tb_<m>.v && vvp tb.vvp | tee log/<ID>.log`, rồi `rm -f run_test.v tb.vvp`.
-
 `check_sim_log.py` nhận một hay nhiều log, bỏ tiền tố `# ` của transcript Questa, map header `-- <item name> test --` về ID vplan theo tên item, rồi kiểm: item vplan chưa chạy/không có case, case FAIL, dòng case sai định dạng, case trước mọi header, header không có trong vplan/trùng giữa các log, `[SUMMARY]` thiếu/trùng/lệch số dòng PASS/FAIL và `Test_result` thiếu/sai trong từng log, `[TIMEOUT]`/fatal. Vplan dùng ID khác `TC_…` mà không phải bảng có cột `ID` → thêm `--id-re '<regex>'`.
 
 Test FAIL → phân loại:
 - Lỗi testbench (stimulus/chu kỳ kiểm sai so với vplan, golden model sai so với spec) → sửa TB/testcase, chạy lại.
 - Lỗi RTL hoặc vplan → **không sửa**; báo test ID, triệu chứng, nghi ngờ ở file/dòng nào, cần sửa ở S3 hay S4.
 
-Không có simulator → không phải lỗi thiết kế; ghi "chưa chạy mô phỏng" và lệnh chạy.
+Không có QuestaSim → không phải lỗi thiết kế; không thay bằng simulator khác ngoài `sim/`; ghi "chưa chạy mô phỏng" và lệnh chạy.
 
 ## Đầu ra
 

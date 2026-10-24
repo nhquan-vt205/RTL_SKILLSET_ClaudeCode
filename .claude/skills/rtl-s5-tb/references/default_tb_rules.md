@@ -329,14 +329,14 @@ Mẫu ở `references/sim_env/` (`init_project` chép sẵn vào `sim/` khi tạ
 
 | File | Nội dung |
 | --- | --- |
-| `Makefile` | QuestaSim 2021: `build`, `run`, `all`/`all_wave`/`all_cov` (luôn `clean_sim` trước), `wave`, `build_cov`, `run_cov` (+ report riêng của test ở `coverage/<ID>/`), `gen_cov`/`gen_html` (dựng lại `IP.ucdb` từ đầu chỉ từ `<ID>.ucdb` của các test trong `pat.list`, không gộp `IP.ucdb` cũ), `clean_sim` (file tạm của một lần chạy, giữ `*.ucdb`, `coverage/`), `clean` (xóa hết, kể cả coverage), `help`; Vivado: `schematic` (`SCH=<instance>`, `PART=<device>`); `gen_data`. `TESTNAME` mặc định = dòng đầu `pat.list`; `MODULE` suy ra từ `TESTNAME` (`TC_<M>_<NNN>` → `<m>`), `TB_NAME = tb_<m>`. |
+| `Makefile` | QuestaSim 2021: `build`, `run`, `all`/`all_wave`/`all_cov` (luôn `clean_sim` trước), `wave`, `build_cov`, `run_cov` (+ report riêng của test ở `coverage/<ID>/`), `gen_cov`/`gen_html` (dựng lại `IP.ucdb` từ đầu chỉ từ `<ID>.ucdb` của các test trong `pat.list`, không gộp `IP.ucdb` cũ), `clean_sim` (file tạm của một lần chạy, giữ `*.ucdb`, `coverage/`), `clean` (xóa hết, kể cả coverage), `lint` (compile `rtl.f` không cần TB, `TOP=<m>` elaborate cây `<m>` – dùng ở S3), `help`; Vivado: `schematic` (`SCH=<instance>`, `PART=<device>`); `gen_data`. `TESTNAME` mặc định = dòng đầu `pat.list`; `MODULE` suy ra từ `TESTNAME` (`TC_<M>_<NNN>` → `<m>`), `TB_NAME = tb_<m>`. |
 | `compile.f` | `-timescale 1ns/1ps`, `+incdir+.`, `-f rtl.f`, `-f tb.f`. |
-| `rtl.f` | Mọi file `rtl/*.v`, module con trước module cha, dạng `../rtl/<file>.v`. Dòng chứa `//` là comment. S5 thêm file của cây `<m>` nếu thiếu. |
+| `rtl.f` | Mọi file `rtl/*.v`, module con trước module cha, dạng `../rtl/<file>.v`. Dòng chứa `//` là comment. S3 thêm `rtl/<m>.v` khi viết RTL; S5 thêm file còn thiếu của cây `<m>`. |
 | `tb.f` | `../tb/${TB_NAME}.v` (QuestaSim thay biến môi trường do Makefile export). |
 | `pat.list` | ID testcase, mỗi dòng một ID; dòng chứa `//` bị bỏ qua. S5 thêm ID của `<m>`. |
 | `run.csh` / `report.csh` | Chạy hết `pat.list` (`./run.csh`; `./run.csh cov` chạy `make clean` một lần trước để regression coverage bắt đầu từ đầu) / bảng PAT_NAME – RUN_DATE – RESULT từ `log/<ID>.log` (`End time`, `Test_result`). Cần `tcsh`. |
 | `schematic.tcl` | Vivado: đọc `rtl.f`, `synth_design -rtl -top <m>`, mở schematic. |
 
-Đầu ra mô phỏng (`work/`, `log/`, `*.log`, `*.wlf`, `vsim.dbg`, `modelsim.ini`, `*.ucdb`, `coverage/`, `covhtmlreport/`, `run_test.v`, `.Xil/`) là file sinh ra, không phải tài liệu cần giữ; `make clean` xóa phần lớn.
+Đầu ra mô phỏng (`work/`, `lint_work/`, `log/`, `*.log`, `*.wlf`, `vsim.dbg`, `modelsim.ini`, `*.ucdb`, `coverage/`, `covhtmlreport/`, `run_test.v`, `.Xil/`) là file sinh ra, không phải tài liệu cần giữ; `make clean` xóa phần lớn.
 
-Không có QuestaSim → Icarus chạy từ `sim/` ở `-g2005` (cùng chế độ lint RTL của S3): `cp ../tc/<ID>.v run_test.v && iverilog -g2005 -I. -o tb.vvp $(grep -v '^ *//' rtl.f) ../tb/tb_<m>.v && vvp tb.vvp | tee log/<ID>.log`, rồi xóa `run_test.v`, `tb.vvp`. Lỗi parse nghĩa là còn construct SV → sửa TB. Simulator là lựa chọn độc lập với ngôn ngữ: không bao giờ chuyển TB sang SystemVerilog để chạy một simulator. RTL module con cũ còn `.sv` → báo trong báo cáo, không tự viết lại RTL.
+Mọi lần biên dịch/mô phỏng (S3 `lint`, S5 `all`/`all_cov`/`run.csh`) đều chạy qua `sim/Makefile`; skill đọc `sim/` trước và không tự gõ lệnh simulator. Không có QuestaSim → không chạy, báo lệnh. File `.v` biên dịch ở chế độ Verilog: lỗi cú pháp do construct SV → sửa TB, không chuyển TB sang SystemVerilog. RTL module con cũ còn `.sv` → báo trong báo cáo, không tự viết lại RTL.

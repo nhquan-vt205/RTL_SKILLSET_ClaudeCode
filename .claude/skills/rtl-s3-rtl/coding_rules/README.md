@@ -2,7 +2,7 @@
 
 Đặt file coding style RTL vào thư mục này (.md, .txt, .pdf, .docx, file .v mẫu…). Stage 3 đọc mọi file ở đây trừ README.md; rule ở đây luôn thắng.
 
-Thư mục trống → stage 3 vẫn chạy, dùng `../references/default_rtl_rules.md` (Verilog-2005, đuôi `.v`, kiểm bằng Icarus `-g2005` / Verilator chế độ 1364-2005).
+Thư mục trống → stage 3 vẫn chạy, dùng `../references/default_rtl_rules.md` (Verilog-2005, đuôi `.v`, kiểm compile bằng `make -C sim lint TOP=<m>`).
 
 Nên ghi rõ: header, đặt tên, kiểu reset, cách viết FSM, cấu trúc thư mục `rtl/`.
 

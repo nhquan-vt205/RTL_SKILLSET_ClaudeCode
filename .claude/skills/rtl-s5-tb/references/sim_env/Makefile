@@ -2,9 +2,11 @@
 # Simulation environment (shared by every module)
 #   Simulation / waveform / coverage : QuestaSim 2021 (vlog, vsim, vcover)
 #   Schematic                         : Vivado (RTL elaboration of rtl.f)
+#   RTL compile check (S3)            : QuestaSim vlog -lint of rtl.f (+ vopt of TOP)
 # Test case TC_<MODULE>_<NNN> = tc/TC_<MODULE>_<NNN>.v, run on tb/tb_<module>.v
 # Example run string: make TESTNAME={name_of_testcase} {optional}
 #                     make TESTNAME=TC_MY_MODULE_002 all
+#                     make lint TOP=my_module                             (RTL only, no testbench)
 #                     make DATA_IN=<input.txt> DATA_OUT=<output.txt> all   (paths relative to sim/)
 #                     make gen_data                                       (script/<module>_gen_vectors.py)
 #                     make schematic SCH=u_ctrl                           (MODULE=<m> for another top)
@@ -16,6 +18,8 @@ TESTNAME     ?= $(firstword $(shell sed '/\/\//d' $(REGRESS_LIST)))
 MODULE       ?= $(shell echo $(TESTNAME) | sed 's/^TC_//; s/_[0-9]*$$//' | tr A-Z a-z)
 TB_NAME      ?= tb_$(MODULE)
 RADIX        ?= decimal
+# Top module elaborated by "make lint" (empty = compile rtl.f only)
+TOP          ?=
 # tb.f reads ${TB_NAME}
 export TB_NAME
 
@@ -72,6 +76,14 @@ run_cov:
 	mkdir -p coverage/$(TESTNAME)
 	vcover report $(TESTNAME).ucdb -output coverage/$(TESTNAME)/summary_report.txt
 	vcover report -zeros -details -code bcesft -annotate -All -codeAll $(TESTNAME).ucdb -output coverage/$(TESTNAME)/detail_report.txt
+# RTL compile check: every file of rtl.f in a fresh library lint_work (no testbench);
+# with TOP, also elaborate the tree of TOP (missing submodule / port mismatch = error)
+lint:
+	mkdir -p log
+	rm -rf lint_work
+	vlib lint_work
+	vlog -lint -work lint_work -f rtl.f > log/lint.log 2>&1; s=$$?; cat log/lint.log; exit $$s
+	$(if $(TOP),vopt -work lint_work $(TOP) -o $(TOP)_lint >> log/lint.log 2>&1; s=$$?; tail -4 log/lint.log; exit $$s)
 wave:
 	vsim -i -view vsim.wlf -do "add wave vsim:/$(TB_NAME)/*; radix -$(RADIX)" &
 schematic:
@@ -96,7 +108,7 @@ gen_html: merge_cov
 	vcover report -zeros -details -code bcesft -annotate -testhitdataAll -html IP.ucdb
 # Temporary files of one run; keeps coverage data (*.ucdb, coverage/) and log/
 clean_sim:
-	rm -rf work
+	rm -rf work lint_work
 	rm -rf vsim.dbg
 	rm -rf *.ini
 	rm -rf *.log
@@ -121,6 +133,7 @@ help:
 	@echo "** make all_cov   : clean_sim, build and run simulation in coverage mode"
 	@echo "** make all_wave  : clean_sim, build and run simulation, then open waveform"
 	@echo "** make wave      : open waveform (QuestaSim)"
+	@echo "** make lint      : compile check of rtl.f (log/lint.log), TOP=<m> also elaborates <m>"
 	@echo "** make schematic : open RTL schematic (Vivado), SCH=<instance> for a sub-block"
 	@echo "** make gen_data  : rebuild the test data of MODULE (script/<module>_gen_vectors.py)"
 	@echo "** make gen_cov   : rebuild IP.ucdb from the tests of pat.list, total text report (coverage/)"

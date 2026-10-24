@@ -10,11 +10,11 @@ Project thiết kế RTL theo flow 5 stage, mỗi stage là một skill trong `.
 | --- | --- | --- | --- |
 | S1 | `/rtl-s1-spec` | Toàn project | `doc/spec/` |
 | S2 | `/rtl-s2-diagram <m> [--level L0\|L1\|L2] [--cloud …] [--block …] [--from … --to …]` | Module được nêu | `doc/diagram/<m>/` |
-| S3 | `/rtl-s3-rtl <m>` | Module được nêu | `rtl/<m>.v` (Verilog-2005) |
+| S3 | `/rtl-s3-rtl <m>` | Module được nêu | `rtl/<m>.v` (Verilog-2005), dòng của nó trong `sim/rtl.f` |
 | S4 | `/rtl-s4-vplan <m>` | Module được nêu (tùy chọn) | `doc/vplan/` |
 | S5 | `/rtl-s5-tb <m>` | Module được nêu (tùy chọn) | `tb/tb_<m>.v`, `tc/<ID>.v`, `sim/` (rtl.f, pat.list) |
 
-Cấu trúc mô phỏng phẳng (không lớp `<m>/`): `rtl/`, `tb/`, `tc/` chỉ chứa mã HDL; `sim/` là môi trường QuestaSim dùng chung (Makefile, `*.f`, `pat.list`, `*.csh`, `schematic.tcl`, `script/`) – `init_project` chép sẵn từ `rtl-s5-tb/references/sim_env/`, mọi file mô phỏng sinh ra trong `sim/` không được commit; dữ liệu test ở `doc/database/input/` và `doc/database/output/`.
+Cấu trúc mô phỏng phẳng (không lớp `<m>/`): `rtl/`, `tb/`, `tc/` chỉ chứa mã HDL; `sim/` là môi trường QuestaSim dùng chung (Makefile, `*.f`, `pat.list`, `*.csh`, `schematic.tcl`, `script/`) – `init_project` chép sẵn từ `rtl-s5-tb/references/sim_env/`, mọi file mô phỏng sinh ra trong `sim/` không được commit. Mọi bước compile/mô phỏng của S1–S5 (S3 `make -C sim lint TOP=<m>`, S5 `make -C sim all TESTNAME=<ID>`) đọc và chạy qua `sim/`, không tự gõ lệnh simulator; dữ liệu test ở `doc/database/input/` và `doc/database/output/`.
 
 ## Tài liệu co giãn theo độ phức tạp phần cứng
 
@@ -72,4 +72,4 @@ Module `snake_case`; port `_i` / `_o`; active-low `_n`; thanh ghi `_q`, giá tr�
 
 ## Công cụ (dùng nếu có)
 
-Python 3 (bắt buộc cho script gate và lint diagram) · `verilator` / `iverilog` cho lint và mô phỏng (RTL S3 lint ở chế độ Verilog-2005: `iverilog -g2005`, `verilator --default-language 1364-2005`; testbench S5 cũng là Verilog-2005 `.v`) · QuestaSim 2021 cho mô phỏng/waveform/coverage qua `sim/Makefile` (không có thì `iverilog -g2005`) · Vivado cho `make schematic` · `tcsh` cho `sim/run.csh`, `sim/report.csh`.
+Python 3 (bắt buộc cho script gate và lint diagram) · QuestaSim 2021 qua `sim/Makefile` cho compile check RTL S3 (`lint`) và mô phỏng/waveform/coverage S5 (RTL và testbench đều là Verilog-2005 `.v`; không có QuestaSim thì ghi "chưa lint"/"chưa chạy mô phỏng" và lệnh) · Vivado cho `make schematic` · `tcsh` cho `sim/run.csh`, `sim/report.csh`.

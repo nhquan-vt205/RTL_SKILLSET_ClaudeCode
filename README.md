@@ -71,7 +71,7 @@ Diagram là sơ đồ logic SVG đen trắng (MUX, register/FF, gate, ellipse op
 2. Đặt tài liệu nguồn (requirements, kiến trúc thô, giải thuật, công thức – định dạng nào cũng được) vào `doc/spec/source/`.
 3. (Tùy chọn) đặt coding rule / template của bạn vào `coding_rules/`, `vplan_template/`, `tb_coding_rules/`. Để trống thì skill dùng rule mặc định.
 
-Công cụ: Python 3 (bắt buộc), `iverilog` và/hoặc `verilator` (miễn phí, đủ cho S1–S3 và mô phỏng thay thế). Mô phỏng S5 qua `sim/Makefile` cần QuestaSim; `make schematic` cần Vivado; `run.csh`/`report.csh` cần `tcsh`.
+Công cụ: Python 3 (bắt buộc). Compile check RTL ở S3 (`make -C sim lint`) và mô phỏng S5 đều chạy qua `sim/Makefile`, cần QuestaSim; `make schematic` cần Vivado; `run.csh`/`report.csh` cần `tcsh`.
 
 ## 4. Sử dụng
 
@@ -81,7 +81,7 @@ Công cụ: Python 3 (bắt buộc), `iverilog` và/hoặc `verilator` (miễn p
 | `/rtl-s1-spec --recheck` | Chỉ đánh giá input. |
 | `/rtl-s2-diagram <m> [--level Lx] [--cloud …] [--block …]` | Sơ đồ logic của module: một file `<m>.svg` đen trắng (mở bằng Chrome/Edge, chèn được vào Word/PPT), nhúng model phương trình cho S3. L1/L0: đề xuất phần gom thành cloud/khối và chờ bạn duyệt (`--cloud`/`--block` để chỉ định sẵn). |
 | `/rtl-s2-diagram <m> --from a,b --to x,y [--part p]` | Thêm góc nhìn `<m>_<part>.svg` chỉ chứa logic từ tín hiệu `a,b` tới `x,y` (S3 không đọc). |
-| `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, compile/lint sạch. |
+| `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, thêm vào `sim/rtl.f`, compile/lint sạch qua `make -C sim lint TOP=<m>`. |
 | `/rtl-s4-vplan <m>` | (tùy chọn) Vplan direct test tối thiểu. |
 | `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`; mỗi item vplan một file `tc/<ID>.v`) + cập nhật `sim/rtl.f`, `sim/pat.list`, mô phỏng bằng QuestaSim (`make -C sim all TESTNAME=<ID>`) nếu có. |
 
@@ -96,7 +96,7 @@ Luôn có (mỗi module)
   doc/spec/<m>_spec.md                    chế độ đơn – chức năng, port, thanh ghi, hành vi, reset
     hoặc doc/spec/architecture/<m>_spec.md   chế độ phân cấp
   doc/diagram/<m>/<m>.svg
-  rtl/<m>.v                               Verilog-2005
+  rtl/<m>.v                               Verilog-2005 (+ dòng ../rtl/<m>.v trong sim/rtl.f)
 
 Chỉ khi cần
   doc/spec/spec_status.md                 IP nhiều module: hierarchy + trạng thái + OPEN

@@ -15,7 +15,7 @@ Mục tiêu: RTL **Verilog-2005, đúng chức năng trong spec, đơn giản, d
 
 - Chỉ implement đúng module(s) được nêu tên; không nhận "all".
 - Module có module con: viết instance theo bảng port của con. Con chưa có RTL → vẫn instance, liệt kê trong báo cáo; **không tự viết module con**.
-- Không sửa `doc/spec/`, `doc/diagram/`. Đầu ra chỉ trong `rtl/`. Không tạo file báo cáo, traceability hay testbench.
+- Không sửa `doc/spec/`, `doc/diagram/`. Đầu ra chỉ trong `rtl/`, cộng dòng `../rtl/<m>.v` trong `sim/rtl.f` để kiểm compile. Không tạo file báo cáo, traceability hay testbench.
 
 ## Bước 0 – Gate
 
@@ -71,12 +71,15 @@ Spec/diagram sai hoặc thiếu đến mức không viết được đúng chứ
    ```bash
    python3 .claude/skills/rtl-s3-rtl/scripts/check_ports.py rtl/<m>.v <file bảng port gate in ra>
    ```
-2. **Compile/lint** bằng công cụ có sẵn – mục tiêu 0 error, không còn warning nghiêm trọng; warning còn lại phải giải thích được:
-   ```bash
-   verilator --lint-only -Wall -Wno-DECLFILENAME --default-language 1364-2005 --top-module <m> rtl/<m>.v <RTL module con đã có>
-   iverilog -g2005 -o /dev/null rtl/<m>.v <RTL module con đã có>      # thêm -i nếu còn module con chưa có RTL
-   ```
-   Verilator cũ không có `--default-language` → dùng `--language 1364-2005` hoặc `+1364-2005ext+v`. Không chuyển về `-g2012`/chế độ SV cho RTL: lỗi parse ở chế độ 2005 nghĩa là code còn construct SV → sửa code. Module con cũ còn là `.sv` (project trước khi đổi) → báo, không tự viết lại. Mọi module con đã có RTL → lint cả cây để bắt lỗi nối dây. Không có công cụ nào → ghi "chưa lint".
+2. **Compile/lint qua `sim/`** – không tự gõ lệnh simulator; đọc rồi dùng môi trường mô phỏng chung:
+   - Đọc `sim/Makefile` và `sim/rtl.f`. Thiếu `sim/Makefile` → chép các file chưa có từ `.claude/skills/rtl-s5-tb/references/sim_env/` (không ghi đè file đã có); Makefile có sẵn mà chưa có target `lint` → báo, đề xuất chép target từ mẫu, ghi "chưa lint".
+   - `sim/rtl.f`: thêm `../rtl/<m>.v` nếu chưa có, sau mọi module con và trước module cha; không xóa dòng của module khác; dòng chứa `//` là comment.
+   - Chạy (cần QuestaSim, `vlog` trong PATH):
+     ```bash
+     make -C sim lint TOP=<m>      # vlog -lint mọi file trong rtl.f (thư viện lint_work mới) + vopt cây <m>; log: sim/log/lint.log
+     make -C sim lint              # khi còn module con chưa có RTL: chỉ compile, không elaborate
+     ```
+   - Mục tiêu 0 error, không còn warning nghiêm trọng; warning còn lại phải giải thích được. File `.v` được biên dịch ở chế độ Verilog (không `-sv`): lỗi cú pháp do construct SV → sửa code, không chuyển sang SV. Lỗi ở file của module khác trong `rtl.f` → báo, không sửa. Module con cũ còn `.sv` → báo, không tự viết lại. Không có QuestaSim → ghi "chưa lint" và lệnh trên.
 3. **Tự rà lỗi thật:**
    - Verilog-2005 thuần: không còn construct SV nào (`logic`, `always_ff`, `always_comb`, `typedef`, `enum`, `struct`, `'0`…); tín hiệu gán trong `always` là `reg`, gán bằng `assign` là `wire`.
    - Không latch (mọi nhánh gán đủ, `case` có `default`); reset đúng spec.
@@ -90,8 +93,8 @@ Lỗi lint/port do code của chính stage này → sửa rồi chạy lại đ�
 
 ## Đầu ra
 
-`rtl/<m>.v` (Verilog-2005; cấu trúc thư mục khác chỉ khi coding rule quy định). Một module một file. Làm lại module mà còn `rtl/<m>.sv` cũ do S3 tạo trước đây → xóa file `.sv` đó để không có hai bản.
+`rtl/<m>.v` (Verilog-2005; cấu trúc thư mục khác chỉ khi coding rule quy định) và dòng của nó trong `sim/rtl.f`. Một module một file. Làm lại module mà còn `rtl/<m>.sv` cũ do S3 tạo trước đây → xóa file `.sv` đó để không có hai bản.
 
 ## Báo cáo cuối (chỉ trong chat)
 
-File đã tạo · ngôn ngữ (Verilog-2005) · level · kết quả check_ports và lint (warning còn lại và lý do) · OPEN đã áp giả định · module con còn thiếu RTL · lệnh tiếp theo: module con còn thiếu, hoặc module cha; thiết kế xong ở đây – `/rtl-s4-vplan <m>` chỉ khi cần kiểm thử.
+File đã tạo · ngôn ngữ (Verilog-2005) · level · kết quả check_ports và `make -C sim lint` (warning còn lại và lý do) · OPEN đã áp giả định · module con còn thiếu RTL · lệnh tiếp theo: module con còn thiếu, hoặc module cha; thiết kế xong ở đây – `/rtl-s4-vplan <m>` chỉ khi cần kiểm thử.
