@@ -77,7 +77,7 @@ Công cụ: Python 3 (bắt buộc). Compile check RTL ở S3 (`make -C sim lint
 
 | Lệnh | Việc |
 | --- | --- |
-| `/rtl-s1-spec` | Đọc `doc/spec/source/`. Input chưa đủ → báo lỗi + đề xuất sửa trong chat, không ghi file. Đủ → spec tối thiểu (module nhỏ: một file) + trạng thái PASS/FAIL; PASS → ghi mọi module ở dạng comment vào `sim/rtl.f`, `sim/pat.list` (nhóm theo nhánh git). |
+| `/rtl-s1-spec` | Đọc `doc/spec/source/`. Input chưa đủ → báo lỗi + đề xuất sửa trong chat, không ghi file. Đủ → spec tối thiểu (module nhỏ: một file) + trạng thái PASS/FAIL; PASS → ghi mọi module ở dạng comment vào `sim/rtl.f`, `sim/pat.list` (nhóm theo nhánh git, `pat.list` chỉ có dòng mở đầu nhóm). |
 | `/rtl-s1-spec --recheck` | Chỉ đánh giá input. |
 | `/rtl-s2-diagram <m> [--level Lx] [--cloud …] [--block …]` | Sơ đồ logic của module: một file `<m>.svg` đen trắng (mở bằng Chrome/Edge, chèn được vào Word/PPT), nhúng model phương trình cho S3. L1/L0: đề xuất phần gom thành cloud/khối và chờ bạn duyệt (`--cloud`/`--block` để chỉ định sẵn). |
 | `/rtl-s2-diagram <m> --from a,b --to x,y [--part p]` | Thêm góc nhìn `<m>_<part>.svg` chỉ chứa logic từ tín hiệu `a,b` tới `x,y` (S3 không đọc). |
@@ -87,7 +87,7 @@ Công cụ: Python 3 (bắt buộc). Compile check RTL ở S3 (`make -C sim lint
 
 Thiết kế nhiều cấp: S2→S3 cho các leaf trước, rồi block, cuối cùng top. Có thể nêu nhiều module trong một lệnh; không có lệnh "all" – chủ ý để bạn duyệt từng module.
 
-Nhánh git: `main` dừng ở S1. Từ S2, mỗi module con trực tiếp của top có chức năng riêng làm trên nhánh `feat/<m>` (module con của nó và module chỉ để làm instance đi cùng nhánh; top đi `feat/<top>` sau khi các nhánh con đã merge); skill tự chuyển nhánh, commit đầu ra của stage và `git push -u origin feat/<m>`, bạn tự mở PR/merge vào `main`. Nhánh của từng module ghi ở cột `Branch` của `spec_status.md`.
+Nhánh git: `main` dừng ở S1. Từ S2, mỗi module con trực tiếp của top có chức năng riêng làm trên nhánh mang tên module (module con của nó và module chỉ để làm instance đi cùng nhánh); top làm trên `main` sau khi các nhánh con đã kiểm thử và merge. Skill báo khi đang sai nhánh; commit/push khi bạn yêu cầu. Nhánh của từng module ghi ở cột `Branch` của `spec_status.md`.
 
 ## 5. Tài liệu được tạo
 

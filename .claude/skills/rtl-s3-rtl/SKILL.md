@@ -25,7 +25,7 @@ python3 .claude/skills/rtl-s3-rtl/scripts/check_preconditions.py --stage 3 --mod
 
 Cần: spec đã PASS, bảng port của module, diagram `doc/diagram/<m>/<m>.svg`. `<m>_notes.md` không bắt buộc – có thì đọc. Diagram đầu vào chỉ là `<m>.svg`; góc nhìn scope `<m>_<part>.svg` không đọc; file định dạng cũ (`.mmd`, `.html`) không còn được nhận – chạy lại `/rtl-s2-diagram <m>`. Mã thoát ≠ 0 → bỏ qua module đó, báo các dòng `[THIẾU]` và lệnh cần chạy trước. Dòng `[INFO]` cho biết file cần đọc, level và module con chưa có RTL.
 
-**Nhánh git** (mục "Nhánh git" của `CLAUDE.md`): sau gate, chuyển sang nhánh `feat/<b>` của `<m>` (cột `Branch` của `spec_status.md`; chế độ đơn `feat/<m>`), tạo từ `main` nếu chưa có. Hoàn thành stage → commit đúng các file đầu ra của S3 và `git push -u origin feat/<b>`; không merge, không push `main`.
+**Nhánh git** (mục "Nhánh git" của `CLAUDE.md`): sau gate, so nhánh hiện tại với nhánh `<b>` của `<m>` (cột `Branch` của `spec_status.md`; chế độ đơn `<m>`). Khác nhau → báo nhánh đúng và lệnh (`git checkout <b>`, hoặc `git checkout -b <b> main` nếu chưa có), chỉ chuyển khi người dùng đồng ý; không chạy S3 của module con trên `main`. Commit/push đầu ra chỉ khi người dùng yêu cầu; báo cáo cuối gợi ý lệnh commit và `git push -u origin <b>`.
 
 ## Bước 1 – Coding rule
 

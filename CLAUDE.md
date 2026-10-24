@@ -8,7 +8,7 @@ Project thiết kế RTL theo flow 5 stage, mỗi stage là một skill trong `.
 
 | Stage | Lệnh | Phạm vi | Đầu ra |
 | --- | --- | --- | --- |
-| S1 | `/rtl-s1-spec` | Toàn project | `doc/spec/`, mọi module ở dạng comment trong `sim/rtl.f`, `sim/pat.list` |
+| S1 | `/rtl-s1-spec` | Toàn project | `doc/spec/`, `sim/rtl.f` + `sim/pat.list` (mọi module ở dạng comment, nhóm theo nhánh) |
 | S2 | `/rtl-s2-diagram <m> [--level L0\|L1\|L2] [--cloud …] [--block …] [--from … --to …]` | Module được nêu | `doc/diagram/<m>/` |
 | S3 | `/rtl-s3-rtl <m>` | Module được nêu | `rtl/<m>.v` (Verilog-2005), dòng của nó trong `sim/rtl.f` |
 | S4 | `/rtl-s4-vplan <m>` | Module được nêu (tùy chọn) | `doc/vplan/` |
@@ -18,14 +18,14 @@ Cấu trúc mô phỏng phẳng (không lớp `<m>/`): `rtl/`, `tb/`, `tc/` ch�
 
 ## Nhánh git
 
-- **`main` dừng ở S1.** S1 chạy trên `main`: khung project + `doc/spec/` + `sim/rtl.f`, `sim/pat.list` (mọi dòng ở dạng comment). Không chạy S2–S5 trên `main`.
-- **S2–S5 chạy trên nhánh `feat/<b>`** của module, lấy từ cột `Branch` của "Module list" trong `spec_status.md` (S1 ghi, người dùng duyệt):
-  - mỗi module con trực tiếp của top có chức năng riêng có một nhánh;
-  - module con sâu hơn và module chỉ được tạo ra để làm instance đi theo nhánh của module instance nó (theo `Parent`);
-  - top (cùng helper của riêng top) đi nhánh `feat/<top>`, tạo sau khi nhánh các module con đã merge vào `main` (S3 của top cần RTL các module con);
-  - chế độ đơn: `feat/<m>`. Bảng thiếu cột `Branch` → suy theo các quy tắc trên và nêu trong báo cáo.
-- **Đầu mỗi lần chạy S2–S5** (sau gate): xác định `feat/<b>` của `<m>`. Đang ở nhánh khác mà working tree có thay đổi chưa commit → báo, dừng. Nhánh đã có (local hoặc `origin`) → `git checkout feat/<b>`; chưa có → `git checkout -b feat/<b> main`.
-- **Cuối lần chạy, khi stage hoàn thành:** `git add` đúng các file đầu ra của stage (kể cả file đã xóa), commit `S<n> <m>: <tóm tắt>`, rồi `git push -u origin feat/<b>`. Stage dừng giữa chừng (gate/lỗi/chờ duyệt) → không commit. Không có remote `origin` hoặc push lỗi → giữ commit, báo nguyên văn lỗi. Không merge vào `main`, không push `main` – người dùng mở PR/merge.
+- **`main` dừng ở S1.** S1 chạy trên `main`: khung project + `doc/spec/` + `sim/rtl.f`, `sim/pat.list` (nhóm theo nhánh, mọi dòng ở dạng comment). Không chạy S2–S5 của module con trên `main`.
+- **S2–S5 chạy trên nhánh `<b>`** của module, lấy từ cột `Branch` của "Module list" trong `spec_status.md` (S1 ghi, người dùng duyệt):
+  - mỗi module con trực tiếp của top có chức năng riêng có một nhánh, tên nhánh = tên module;
+  - module con sâu hơn và module chỉ được tạo ra để làm instance đi theo nhánh của module instance nó (theo `Parent`); helper được nhiều nhánh dùng → nhánh đầu tiên dùng nó, nhánh còn lại `git merge` nhánh đó khi cần RTL của helper;
+  - top (cùng helper của riêng top) làm trên `main`, sau khi mọi nhánh module con đã kiểm thử xong và merge vào `main`;
+  - chế độ đơn: nhánh `<m>`. Bảng thiếu cột `Branch` → suy theo các quy tắc trên và nêu trong báo cáo.
+- **Đầu mỗi lần chạy S2–S5** (sau gate): nhánh hiện tại khác `<b>` → báo nhánh đúng và lệnh chuyển/tạo (`git checkout -b <b> main`), chỉ chuyển khi người dùng đồng ý.
+- **Commit/push chỉ khi người dùng yêu cầu**: commit đúng các file đầu ra của stage (`S<n> <m>: <tóm tắt>`), `git push -u origin <b>`. Hạ tầng dùng chung (skill, `sim/` env) commit trên `main` rồi merge vào các nhánh. Merge nhánh module vào `main` chỉ khi mọi module con đã kiểm thử xong – xung đột ở `sim/rtl.f`, `sim/pat.list` (nếu có) giữ mọi dòng.
 
 ## Tài liệu co giãn theo độ phức tạp phần cứng
 

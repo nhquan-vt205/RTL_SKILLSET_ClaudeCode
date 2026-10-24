@@ -103,10 +103,10 @@ Input: <files in doc/spec/source/>
 ## Module list
 | Module | Parent | Type | Level | Function | Branch |
 | --- | --- | --- | --- | --- | --- |
-| `dma_top` | – | top | L0 | IP top | `feat/dma_top` |
-| `dma_regs` | `dma_top` | leaf | L2 | APB slave, configuration registers | `feat/dma_regs` |
-| `dma_engine` | `dma_top` | block | L0 | Data transfer control | `feat/dma_engine` |
-| `dma_rd` | `dma_engine` | leaf | L1 | Read channel | `feat/dma_engine` |
+| `dma_top` | – | top | L0 | IP top | `main` |
+| `dma_regs` | `dma_top` | leaf | L2 | APB slave, configuration registers | `dma_regs` |
+| `dma_engine` | `dma_top` | block | L0 | Data transfer control | `dma_engine` |
+| `dma_rd` | `dma_engine` | leaf | L1 | Read channel | `dma_engine` |
 
 ## OPEN
 | ID | Description | Interim assumption | Impact |
@@ -115,9 +115,10 @@ Input: <files in doc/spec/source/>
 
 Bảng module xếp theo cây (cha trước con). Cột `Branch` là nhánh git làm S2–S5 của module (mục "Nhánh git" của `CLAUDE.md`):
 
-- Module con trực tiếp của top có chức năng riêng → nhánh riêng `feat/<m>`.
-- Module con sâu hơn, hoặc module chỉ được tạo ra để làm instance (helper, primitive dùng lại) → nhánh của module instance nó (theo `Parent` lên tới module có nhánh riêng). Helper của riêng top → nhánh của top.
-- Top → `feat/<top>`.
+- Module con trực tiếp của top có chức năng riêng → nhánh riêng, tên nhánh = tên module (`dma_regs`).
+- Module con sâu hơn, hoặc module chỉ được tạo ra để làm instance (helper, primitive dùng lại) → nhánh của module instance nó (theo `Parent` lên tới module có nhánh riêng).
+- Helper được module của **nhiều nhánh** instance → nhánh đầu tiên (theo thứ tự bảng) dùng nó; báo cáo ghi nhánh còn lại phải `git merge <nhánh đó>` trước S3 của mình (không viết helper hai lần).
+- Top và helper của riêng top → `main`: S2–S5 của top làm trên `main` sau khi mọi nhánh module con đã kiểm thử xong và merge vào `main`.
 
 Cột này người dùng duyệt cùng spec; đổi nhánh của module sau khi S2 đã chạy → báo trong chat, không tự chuyển file giữa các nhánh. `FAIL` thì thêm một dòng `Reason:` ngay dưới trạng thái. Không có OPEN thì bỏ mục OPEN.
 
@@ -133,9 +134,9 @@ Không thêm trạng thái thứ ba; OPEN còn lại liệt kê trong mục OPEN
 Ghi sẵn mọi module vào `sim/rtl.f` và `sim/pat.list` **ở dạng comment**; stage sau bỏ comment dòng của module khi dùng (S3 bỏ comment dòng `rtl.f` khi viết RTL, S5 bỏ comment/thêm ID testcase). Spec `FAIL` → chưa ghi, nêu trong báo cáo.
 
 - Thiếu `sim/rtl.f` hoặc `sim/pat.list` → chép file đó từ `.claude/skills/rtl-s5-tb/references/sim_env/` (không ghi đè file đã có). S1 chỉ sửa hai file này trong `sim/`.
-- Nhóm theo nhánh (cột `Branch`; chế độ đơn: một nhóm `feat/<m>`), mỗi nhóm mở đầu bằng dòng `// --- feat/<b> ---`; nhóm của top cuối cùng. Dòng mở đầu không bao giờ bị sửa, nên các nhánh bỏ comment dòng của mình mà merge vào `main` không đụng nhau.
+- Nhóm theo nhánh (cột `Branch`; chế độ đơn: một nhóm `<m>`), mỗi nhóm mở đầu bằng dòng `// --- <b> ---`, các nhóm cách nhau một dòng trống; nhóm `main` (top) cuối cùng. Dòng mở đầu và dòng trống không bao giờ bị sửa, nên các nhánh sửa trong nhóm của mình mà merge vào `main` không xung đột.
 - `rtl.f`: mỗi module một dòng `// ../rtl/<m>.v`, trong nhóm module con trước module cha (top là dòng cuối file).
-- `pat.list`: mỗi module một dòng `// TC_<M>_001` (`<M>` = tên module viết hoa), cùng thứ tự; S4/S5 chốt số testcase thật.
+- `pat.list`: chỉ dòng mở đầu của mỗi nhóm – ID testcase chưa có trước S4; S5 thêm ID (không comment) vào nhóm của module.
 - Giữ nguyên mọi dòng đã có (dòng comment mẫu ở đầu file, dòng đã bỏ comment). Chạy lại S1: thêm dòng cho module mới vào nhóm của nó, xóa dòng **còn comment** của module bị bỏ; dòng đã bỏ comment của module bị bỏ → chỉ báo.
 
 Ví dụ `sim/rtl.f` với bảng module ở Bước 5:
@@ -143,13 +144,29 @@ Ví dụ `sim/rtl.f` với bảng module ở Bước 5:
 ```text
 // RTL file list of the design under test, paths relative to sim/.
 // ...
-// --- feat/dma_regs ---
+
+// --- dma_regs ---
 // ../rtl/dma_regs.v
-// --- feat/dma_engine ---
+
+// --- dma_engine ---
 // ../rtl/dma_rd.v
 // ../rtl/dma_engine.v
-// --- feat/dma_top ---
+
+// --- main ---
 // ../rtl/dma_top.v
+```
+
+`sim/pat.list` tương ứng (sau S5 của `dma_regs`, nhóm đó có thêm `TC_DMA_REGS_001`…):
+
+```text
+// Regression list: one test ID per line (tc/<ID>.v). Example:
+// ...
+
+// --- dma_regs ---
+
+// --- dma_engine ---
+
+// --- main ---
 ```
 
 ## Chạy lại stage 1
@@ -158,7 +175,7 @@ Spec đã tồn tại → chỉ sửa phần bị ảnh hưởng, không viết 
 
 ## Báo cáo cuối (chỉ trong chat)
 
-PASS/FAIL · chế độ đơn/phân cấp · danh sách file spec đã tạo (và vì sao tách nếu > 1 file/module) · cây module kèm level và nhánh · dòng đã ghi vào `sim/rtl.f`, `sim/pat.list` · OPEN còn lại · lệnh tiếp theo: commit kết quả S1 trên `main`, rồi `/rtl-s2-diagram <leaf>` (S2 tự tạo/chuyển sang nhánh của module; module cha làm sau khi con đã ổn định interface).
+PASS/FAIL · chế độ đơn/phân cấp · danh sách file spec đã tạo (và vì sao tách nếu > 1 file/module) · cây module kèm level và nhánh · dòng đã ghi vào `sim/rtl.f`, `sim/pat.list` · OPEN còn lại · danh sách nhánh cần tạo (và helper dùng chung) · lệnh tiếp theo: commit kết quả S1 trên `main` (khi người dùng yêu cầu), rồi `git checkout -b <b> main` và `/rtl-s2-diagram <leaf>` (module cha làm sau khi con đã ổn định interface).
 
 ### Mẫu "Báo cáo dừng"
 

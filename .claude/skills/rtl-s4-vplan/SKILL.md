@@ -26,7 +26,7 @@ python3 .claude/skills/rtl-s4-vplan/scripts/check_preconditions.py --stage 4 --m
 
 Cần spec PASS, bảng port, `rtl/<m>.sv|.v`. Mã thoát ≠ 0 → bỏ qua module đó, báo `[THIẾU]`. Dòng `[INFO] phạm vi tích hợp` nghĩa là DUT gồm cả module con → test theo kịch bản tích hợp.
 
-**Nhánh git** (mục "Nhánh git" của `CLAUDE.md`): sau gate, chuyển sang nhánh `feat/<b>` của `<m>` (cột `Branch` của `spec_status.md`; chế độ đơn `feat/<m>`), tạo từ `main` nếu chưa có. Hoàn thành stage → commit đúng các file đầu ra của S4 và `git push -u origin feat/<b>`; không merge, không push `main`.
+**Nhánh git** (mục "Nhánh git" của `CLAUDE.md`): sau gate, so nhánh hiện tại với nhánh `<b>` của `<m>` (cột `Branch` của `spec_status.md`; chế độ đơn `<m>`). Khác nhau → báo nhánh đúng và lệnh (`git checkout <b>`, hoặc `git checkout -b <b> main` nếu chưa có), chỉ chuyển khi người dùng đồng ý; không chạy S4 của module con trên `main`. Commit/push đầu ra chỉ khi người dùng yêu cầu; báo cáo cuối gợi ý lệnh commit và `git push -u origin <b>`.
 
 ## Bước 1 – Định dạng
 

@@ -42,7 +42,7 @@ python3 .claude/skills/rtl-s5-tb/scripts/check_preconditions.py --stage 5 --modu
 
 Cần spec PASS, bảng port, RTL của module **và mọi module con** (để mô phỏng được), vplan. Mã thoát ≠ 0 → bỏ qua module đó, báo `[THIẾU]`. Test trong vplan còn `TBD` ở stimulus/mong đợi → bỏ qua test đó, liệt kê trong báo cáo.
 
-**Nhánh git** (mục "Nhánh git" của `CLAUDE.md`): sau gate, chuyển sang nhánh `feat/<b>` của `<m>` (cột `Branch` của `spec_status.md`; chế độ đơn `feat/<m>`), tạo từ `main` nếu chưa có. Hoàn thành stage → commit đúng các file đầu ra của S5 và `git push -u origin feat/<b>`; không merge, không push `main`.
+**Nhánh git** (mục "Nhánh git" của `CLAUDE.md`): sau gate, so nhánh hiện tại với nhánh `<b>` của `<m>` (cột `Branch` của `spec_status.md`; chế độ đơn `<m>`). Khác nhau → báo nhánh đúng và lệnh (`git checkout <b>`, hoặc `git checkout -b <b> main` nếu chưa có), chỉ chuyển khi người dùng đồng ý; không chạy S5 của module con trên `main`. Commit/push đầu ra chỉ khi người dùng yêu cầu; báo cáo cuối gợi ý lệnh commit và `git push -u origin <b>`.
 
 ## Bước 1 – Rule
 
@@ -73,7 +73,7 @@ Cần spec PASS, bảng port, RTL của module **và mọi module con** (để m
 - `Makefile`, `compile.f`, `tb.f`, `run.csh`, `report.csh`, `schematic.tcl` chưa có → chép từ `references/sim_env/`. Đã có → **không ghi đè** (có thể là bản người dùng đã chỉnh); khác mẫu thì nêu trong báo cáo.
 - `rtl.f`, `pat.list` chưa có → chép mẫu (chỉ có dòng comment `//`) rồi thêm như dưới.
 - `rtl.f`: mọi file trong `rtl/`, module con trước module cha, đường dẫn `../rtl/<file>.v`, mỗi dòng một file (S1 ghi sẵn ở dạng comment, S3 bỏ comment khi viết RTL). Dòng của cây `<m>` còn comment → bỏ comment; chưa có → thêm. Không sửa dòng của module khác.
-- `pat.list`: ID các testcase của `<m>` (mỗi dòng một ID, theo thứ tự vplan) – bỏ comment dòng `// TC_<M>_001` S1 ghi sẵn và thêm các ID còn lại ngay dưới nó, trong nhóm `// --- feat/<b> ---` của `<m>`; giữ dòng của module khác; dòng chứa `//` là comment (cũng bỏ qua trong `rtl.f`).
+- `pat.list`: ID các testcase của `<m>` (mỗi dòng một ID, không comment, theo thứ tự vplan), thêm vào cuối nhóm `// --- <b> ---` của `<m>` (S1 ghi sẵn dòng mở đầu nhóm; không sửa dòng mở đầu và dòng trống giữa các nhóm); giữ dòng của module khác; dòng chứa `//` là comment (cũng bỏ qua trong `rtl.f`).
 
 Makefile suy ra `MODULE` từ `TESTNAME` (`TC_<M>_<NNN>` → `<m>` chữ thường), `TB_NAME = tb_<m>`; `tb.f` dùng `${TB_NAME}`. Chạy nếu có QuestaSim (`vsim` trong PATH), từng testcase một (không cần `csh`):
 
