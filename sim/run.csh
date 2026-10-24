@@ -1,0 +1,25 @@
+#!/bin/csh
+
+set cov = 0
+
+if( ($#argv > 0) && ("$1" == "cov") ) then
+    set cov = 1
+endif
+
+# Coverage regression starts from scratch: no database of an earlier run is merged
+if( $cov ) then
+    make clean
+endif
+
+foreach pat (`cat pat.list | sed '/\/\//d'`)
+    echo $pat
+    if( $cov ) then
+        make all_cov TESTNAME=${pat}
+    else
+        make all TESTNAME=${pat}
+    endif
+end
+
+if( $cov ) then
+    make gen_cov
+endif
