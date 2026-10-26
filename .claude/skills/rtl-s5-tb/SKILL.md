@@ -19,7 +19,8 @@ Testbench tự kiểm: stimulus → DUT → golden reference model → checker �
 rtl/        <m>.v ...                 # chỉ mã HDL (S3)
 tb/         tb_<m>.v                  # chỉ mã HDL: hạ tầng TB dùng chung cho mọi test của <m>
 tc/         <ID>.v                    # chỉ mã HDL: chuỗi test của một item vplan
-sim/        Makefile compile.f rtl.f tb.f pat.list run.csh report.csh schematic.tcl
+sim/        Makefile compile.f rtl.f tb.f pat.list run.csh report.csh schematic.tcl cov_excl.tcl
+            exclude.do                # exclusion coverage của người dùng (make cov_gui) – S5 không sửa
             script/                   # script sinh dữ liệu test (nếu có), vd. <m>_gen_vectors.py
             log/<ID>.log              # log từng test – sinh ra, bị .gitignore
 doc/database/input/   <m>_*.txt       # dữ liệu đưa vào DUT (TB đọc file)
@@ -70,7 +71,7 @@ Cần spec PASS, bảng port, RTL của module **và mọi module con** (để m
 `sim/` dùng chung cho mọi module; mẫu ở `references/sim_env/` (`init_project` đã chép sẵn khi tạo project). Trước khi chạy, đọc `sim/Makefile`, `compile.f`, `tb.f`, `rtl.f`, `pat.list` để dùng đúng target và biến của bản đang có; mọi lần biên dịch/mô phỏng đều đi qua `sim/Makefile`, không tự gõ lệnh simulator.
 
 
-- `Makefile`, `compile.f`, `tb.f`, `run.csh`, `report.csh`, `schematic.tcl` chưa có → chép từ `references/sim_env/`. Đã có → **không ghi đè** (có thể là bản người dùng đã chỉnh); khác mẫu thì nêu trong báo cáo.
+- `Makefile`, `compile.f`, `tb.f`, `run.csh`, `report.csh`, `schematic.tcl`, `cov_excl.tcl` chưa có → chép từ `references/sim_env/`. Đã có → **không ghi đè** (có thể là bản người dùng đã chỉnh); khác mẫu thì nêu trong báo cáo.
 - `rtl.f`, `pat.list` chưa có → chép mẫu (chỉ có dòng comment `//`) rồi thêm như dưới.
 - `rtl.f`: mọi file trong `rtl/`, module con trước module cha, đường dẫn `../rtl/<file>.v`, mỗi dòng một file (S1 ghi sẵn ở dạng comment, S3 bỏ comment khi viết RTL). Dòng của cây `<m>` còn comment → bỏ comment; chưa có → thêm. Không sửa dòng của module khác.
 - `pat.list`: ID các testcase của `<m>` (mỗi dòng một ID, không comment, theo thứ tự vplan), thêm vào cuối nhóm `// --- <b> ---` của `<m>` (S1 ghi sẵn dòng mở đầu nhóm; không sửa dòng mở đầu và dòng trống giữa các nhóm); giữ dòng của module khác; dòng chứa `//` là comment (cũng bỏ qua trong `rtl.f`).
@@ -98,7 +99,7 @@ Không có QuestaSim → không phải lỗi thiết kế; không thay bằng si
 tb/tb_<m>.v                          # Verilog-2005, hạ tầng TB
 tc/<ID>.v                            # một file mỗi item vplan
 sim/rtl.f, sim/pat.list              # cập nhật cho <m>
-sim/Makefile, compile.f, tb.f, run.csh, report.csh, schematic.tcl   # chỉ khi chưa có (chép mẫu)
+sim/Makefile, compile.f, tb.f, run.csh, report.csh, schematic.tcl, cov_excl.tcl   # chỉ khi chưa có (chép mẫu)
 sim/script/<m>_gen_vectors.py, doc/database/{input,output}/<m>_*.txt # chỉ khi TB dùng file dữ liệu
 sim/log/<ID>.log                     # nếu đã chạy – sinh ra, bị .gitignore
 ```

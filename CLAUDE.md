@@ -14,7 +14,7 @@ Project thiết kế RTL theo flow 5 stage, mỗi stage là một skill trong `.
 | S4 | `/rtl-s4-vplan <m>` | Module được nêu (tùy chọn) | `doc/vplan/` |
 | S5 | `/rtl-s5-tb <m>` | Module được nêu (tùy chọn) | `tb/tb_<m>.v`, `tc/<ID>.v`, `sim/` (rtl.f, pat.list) |
 
-Cấu trúc mô phỏng phẳng (không lớp `<m>/`): `rtl/`, `tb/`, `tc/` chỉ chứa mã HDL; `sim/` là môi trường QuestaSim dùng chung (Makefile, `*.f`, `pat.list`, `*.csh`, `schematic.tcl`, `script/`) – `init_project` chép sẵn từ `rtl-s5-tb/references/sim_env/`, mọi file mô phỏng sinh ra trong `sim/` không được commit. Mọi bước compile/mô phỏng của S1–S5 (S3 `make -C sim lint TOP=<m>`, S5 `make -C sim all TESTNAME=<ID>`) đọc và chạy qua `sim/`, không tự gõ lệnh simulator; dữ liệu test ở `doc/database/input/` và `doc/database/output/`.
+Cấu trúc mô phỏng phẳng (không lớp `<m>/`): `rtl/`, `tb/`, `tc/` chỉ chứa mã HDL; `sim/` là môi trường QuestaSim dùng chung (Makefile, `*.f`, `pat.list`, `*.csh`, `*.tcl`, `exclude.do`, `script/`) – `init_project` chép sẵn từ `rtl-s5-tb/references/sim_env/`, mọi file mô phỏng sinh ra trong `sim/` không được commit. Mọi bước compile/mô phỏng của S1–S5 (S3 `make -C sim lint TOP=<m>`, S5 `make -C sim all TESTNAME=<ID>`) đọc và chạy qua `sim/`, không tự gõ lệnh simulator; dữ liệu test ở `doc/database/input/` và `doc/database/output/`.
 
 ## Nhánh git
 

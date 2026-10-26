@@ -10,6 +10,7 @@
 #                     make DATA_IN=<input.txt> DATA_OUT=<output.txt> all   (paths relative to sim/)
 #                     make gen_data                                       (script/<module>_gen_vectors.py)
 #                     make schematic SCH=u_ctrl                           (MODULE=<m> for another top)
+#                     make cov_gui                                        (edit coverage exclusions -> exclude.do)
 ##############################################################################################
 #Define variables
 REGRESS_LIST ?= pat.list
@@ -82,9 +83,6 @@ run:
 run_cov:
 	vsim -coverage -l $(TESTNAME).log -c $(TB_NAME) $(SIM_ARGS) -voptargs="+cover=bcesft" -assertdebug -do "coverage save -onexit $(TESTNAME).ucdb; log -r /*;run -all"; s=$$?; \
 	  cp $(TESTNAME).log ./log; mv $(TESTNAME).log sim.log; $(call SHOW_ERRORS,sim.log); exit $$s
-	mkdir -p coverage/$(TESTNAME)
-	vcover report $(TESTNAME).ucdb -output coverage/$(TESTNAME)/summary_report.txt
-	vcover report -zeros -details -code bcesft -annotate -All -codeAll $(TESTNAME).ucdb -output coverage/$(TESTNAME)/detail_report.txt
 # RTL compile check: every file of rtl.f in a fresh library lint_work (no testbench);
 # with TOP, also elaborate the tree of TOP (missing submodule / port mismatch = error)
 lint:
@@ -111,6 +109,13 @@ merge_cov:
 	$(if $(COV_MISSING),@echo "Not run with coverage (left out): $(COV_MISSING)")
 	rm -f IP.ucdb
 	vcover merge IP.ucdb $(COV_DBS)
+	@if [ -f exclude.do ]; then \
+	  vsim -c -viewcov IP.ucdb -do "source cov_excl.tcl; excl_load; coverage save IP.ucdb; quit -f"; fi
+# Coverage GUI on IP.ucdb with exclude.do applied; exclusions edited in the GUI
+# (with their comments) are written back to exclude.do when vsim quits
+cov_gui:
+	@test -f IP.ucdb || { echo "No IP.ucdb: run ./run.csh cov or make gen_cov first"; exit 1; }
+	vsim -viewcov IP.ucdb -do "source cov_excl.tcl; excl_load; excl_autosave" &
 gen_cov: merge_cov
 	mkdir -p coverage
 	vcover report IP.ucdb -output coverage/summary_report.txt
@@ -140,7 +145,7 @@ help:
 	@echo "** make build     : build the design"
 	@echo "** make build_cov : build the design in coverage mode"
 	@echo "** make run       : run simulation"
-	@echo "** make run_cov   : run simulation in coverage mode + report of this test (coverage/<TESTNAME>/)"
+	@echo "** make run_cov   : run simulation in coverage mode (<TESTNAME>.ucdb, merged by gen_cov/gen_html)"
 	@echo "** make all       : clean_sim, build and run simulation"
 	@echo "** make all_cov   : clean_sim, build and run simulation in coverage mode"
 	@echo "** make all_wave  : clean_sim, build and run simulation, then open waveform"
@@ -150,5 +155,7 @@ help:
 	@echo "** make gen_data  : rebuild the test data of MODULE (script/<module>_gen_vectors.py)"
 	@echo "** make gen_cov   : rebuild IP.ucdb from the tests of pat.list, total text report (coverage/)"
 	@echo "** make gen_html  : rebuild IP.ucdb from the tests of pat.list, total html report (covhtmlreport/)"
+	@echo "** make cov_gui   : coverage GUI on IP.ucdb; exclusions are saved to exclude.do on quit"
+	@echo "**                  (exclude.do is applied to IP.ucdb by merge_cov)"
 	@echo "****************************************"
 	@echo ""

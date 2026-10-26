@@ -51,7 +51,7 @@ Diagram là sơ đồ logic SVG đen trắng (MUX, register/FF, gate, ellipse op
 │   └── rtl-s5-tb/                # S5 (tùy chọn): testbench self-checking
 │       ├── tb_coding_rules/      # (tùy chọn) rule testbench của bạn
 │       ├── references/default_tb_rules.md
-│       ├── references/sim_env/   # mẫu sim/: Makefile, compile.f, rtl.f, tb.f, pat.list, run.csh, report.csh, schematic.tcl
+│       ├── references/sim_env/   # mẫu sim/: Makefile, compile.f, rtl.f, tb.f, pat.list, run.csh, report.csh, schematic.tcl, cov_excl.tcl
 │       └── scripts/check_preconditions.py, check_sim_log.py
 ├── memory_bank/session_template.md   # mẫu session summary để khôi phục ngữ cảnh (protocol trong ~/.claude/CLAUDE.md)
 ├── init_project                  # tạo project mới từ khung này (mục 3)

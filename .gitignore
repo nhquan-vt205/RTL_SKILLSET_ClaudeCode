@@ -48,6 +48,7 @@
 !/sim/*.csh
 !/sim/*.tcl
 !/sim/script/
+!/sim/exclude.do
 
 # 4. doc/: generated reports
 /doc/report/
