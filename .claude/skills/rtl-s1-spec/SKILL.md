@@ -136,7 +136,7 @@ Ghi sẵn mọi module vào `sim/rtl.f` và `sim/pat.list` **ở dạng comment*
 - Thiếu `sim/rtl.f` hoặc `sim/pat.list` → chép file đó từ `.claude/skills/rtl-s5-tb/references/sim_env/` (không ghi đè file đã có). S1 chỉ sửa hai file này trong `sim/`.
 - Nhóm theo nhánh (cột `Branch`; chế độ đơn: một nhóm `<m>`), mỗi nhóm mở đầu bằng dòng `// --- <b> ---`, các nhóm cách nhau một dòng trống; nhóm `main` (top) cuối cùng. Dòng mở đầu và dòng trống không bao giờ bị sửa, nên các nhánh sửa trong nhóm của mình mà merge vào `main` không xung đột.
 - `rtl.f`: mỗi module một dòng `// ../rtl/<m>.v`, trong nhóm module con trước module cha (top là dòng cuối file).
-- `pat.list`: chỉ dòng mở đầu của mỗi nhóm – ID testcase chưa có trước S4; S5 thêm ID (không comment) vào nhóm của module.
+- `pat.list`: chỉ dòng mở đầu của mỗi nhóm – ID testcase chưa có trước S4; S5 thêm ID (không comment) vào nhóm của module. Mặc định chỉ mở ID của nhánh hiện tại (trên `main`: nhóm top), ID của nhóm khác ở dạng `//TC_…` – mục "Nhánh git" của `CLAUDE.md`.
 - Giữ nguyên mọi dòng đã có (dòng comment mẫu ở đầu file, dòng đã bỏ comment). Chạy lại S1: thêm dòng cho module mới vào nhóm của nó, xóa dòng **còn comment** của module bị bỏ; dòng đã bỏ comment của module bị bỏ → chỉ báo.
 
 Ví dụ `sim/rtl.f` với bảng module ở Bước 5:

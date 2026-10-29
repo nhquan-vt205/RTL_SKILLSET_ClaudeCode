@@ -83,7 +83,7 @@ Công cụ: Python 3 (bắt buộc). Compile check RTL ở S3 (`make -C sim lint
 | `/rtl-s2-diagram <m> --from a,b --to x,y [--part p]` | Thêm góc nhìn `<m>_<part>.svg` chỉ chứa logic từ tín hiệu `a,b` tới `x,y` (S3 không đọc). |
 | `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, bỏ comment dòng của nó trong `sim/rtl.f`, compile/lint sạch qua `make -C sim lint TOP=<m>`. |
 | `/rtl-s4-vplan <m>` | (tùy chọn) Vplan direct test tối thiểu. |
-| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`; mỗi item vplan một file `tc/<ID>.v`) + cập nhật `sim/rtl.f`, `sim/pat.list`, mô phỏng bằng QuestaSim (`make -C sim all TESTNAME=<ID>`) nếu có. |
+| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`; mỗi item vplan một file `tc/<ID>.v`) + cập nhật `sim/rtl.f`, `sim/pat.list` (mặc định chỉ mở testcase của nhánh hiện tại, nhóm khác ở dạng `//TC_…`), log case căn thẳng cột, mô phỏng bằng QuestaSim (`make -C sim all TESTNAME=<ID>`) nếu có. |
 
 Thiết kế nhiều cấp: S2→S3 cho các leaf trước, rồi block, cuối cùng top. Có thể nêu nhiều module trong một lệnh; không có lệnh "all" – chủ ý để bạn duyệt từng module.
 
@@ -135,7 +135,7 @@ Script phục vụ workflow – không bao giờ cần tạo file giả để qu
 | `check_interface.py` | Bảng port: hướng, width, hậu tố; ở chế độ phân cấp thêm port treo, sai hướng cha–con/anh em, lệch width, input nhiều nguồn |
 | `lint_svg.py` | Diagram SVG: XML, header/level, chỉ đen trắng, không phần tử cấm, chữ tiếng Anh, tiền tố id, model khớp nhóm, luật theo level, tên port không nằm trong khối, đủ port (hỗ trợ gom bus `prefix_*`); không kiểm bố cục |
 | `check_ports.py` | Port list RTL so với bảng port (tính width từ parameter, kể cả `$clog2`) |
-| `check_sim_log.py` | Log S5, một hay nhiều file `sim/log/<ID>.log` (`-- <item name> test --`, `[<time>] <case> PASS\|FAIL \| expected: … \| actual: …`, `[SUMMARY]`, `Test_result`): map tên item về ID vplan; mọi item vplan có case và đều PASS, `[SUMMARY]`/`Test_result` khớp từng log, không TIMEOUT |
+| `check_sim_log.py` | Log S5, một hay nhiều file `sim/log/<ID>.log` (`-- <item name> test --`, `[<time>] <case> PASS\|FAIL \| expected: … \| actual: …` căn thẳng cột, `[SUMMARY]`, `Test_result`): map tên item về ID vplan; mọi item vplan có case và đều PASS, `[SUMMARY]`/`Test_result` khớp từng log, không TIMEOUT |
 
 ## 8. Lưu ý
 

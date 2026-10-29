@@ -26,6 +26,7 @@ Cấu trúc mô phỏng phẳng (không lớp `<m>/`): `rtl/`, `tb/`, `tc/` ch�
   - chế độ đơn: nhánh `<m>`. Bảng thiếu cột `Branch` → suy theo các quy tắc trên và nêu trong báo cáo.
 - **Đầu mỗi lần chạy S2–S5** (sau gate): nhánh hiện tại khác `<b>` → báo nhánh đúng và lệnh chuyển/tạo (`git checkout -b <b> main`), chỉ chuyển khi người dùng đồng ý.
 - **Commit/push chỉ khi người dùng yêu cầu**: commit đúng các file đầu ra của stage (`S<n> <m>: <tóm tắt>`), `git push -u origin <b>`. Hạ tầng dùng chung (skill, `sim/` env) commit trên `main` rồi merge vào các nhánh. Merge nhánh module vào `main` chỉ khi mọi module con đã kiểm thử xong – xung đột ở `sim/rtl.f`, `sim/pat.list` (nếu có) giữ mọi dòng.
+- **`sim/pat.list` mặc định theo nhánh** (regression của nhánh nào chạy test của nhánh đó): trên nhánh `<b>` chỉ ID testcase của nhóm `// --- <b> ---` để mở, ID của mọi nhóm khác comment bằng tiền tố `//` (`//TC_<M>_<NNN>`); trên `main` chỉ mở ID của top (nhóm `// --- main ---`). Sau mỗi lần merge (nhánh module vào `main`, hoặc `main` vào nhánh module) và mỗi lần S5 ghi `pat.list`, đưa file về đúng mặc định của nhánh hiện tại: comment ID của nhóm khác, giữ mọi dòng (không xóa ID). Người dùng tự mở comment khi muốn chạy regression khác – đó là thay đổi tạm, không tự đưa về mặc định trừ khi merge hoặc S5 ghi lại file.
 
 ## Tài liệu co giãn theo độ phức tạp phần cứng
 

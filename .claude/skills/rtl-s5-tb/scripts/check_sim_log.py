@@ -12,6 +12,8 @@ mọi log của module, vd. sim/log/TC_<M>_*.log. Tiền tố "# " của transcr
   -- <item name> test --                                       đầu item vplan (tên đọc được)
   [<time>] <case> PASS | expected: <exp> | actual: <act>       mỗi lần checker so sánh
   [<time>] <case> FAIL | expected: <exp> | actual: <act>
+    (các cột được căn thẳng: <time> căn phải trong [], <case> căn trái, <exp>/<act> căn phải –
+     khoảng trắng đệm được chấp nhận, kể cả bên trong [ ])
   [SUMMARY] PASS=<n> FAIL=<n>                                  cuối mỗi log
   Test_result: PASSED|FAILED                                   cuối mỗi log (sim/report.csh đọc)
 Case thuộc item của header gần nhất phía trên trong cùng log.
@@ -39,9 +41,9 @@ from pathlib import Path
 
 DEFAULT_ID_RE = r"TC_[A-Z0-9_]+_\d{3}"
 HEADER = re.compile(r"^--\s+(?P<name>.+?)\s+test\s+--\s*$")
-CASE = re.compile(r"^\[(?P<t>\d+)\]\s+(?P<case>\S+)\s+(?P<res>PASS|FAIL)\s+\|\s+expected:\s*(?P<exp>.*?)"
+CASE = re.compile(r"^\[\s*(?P<t>\d+)\]\s+(?P<case>\S+)\s+(?P<res>PASS|FAIL)\s+\|\s+expected:\s*(?P<exp>.*?)"
                   r"\s+\|\s+actual:\s*(?P<act>.*?)\s*$")
-CASE_LIKE = re.compile(r"^\[\d+\]\s+\S+\s+(PASS|FAIL)\b")
+CASE_LIKE = re.compile(r"^\[\s*\d+\]\s+\S+\s+(PASS|FAIL)\b")
 SUMMARY = re.compile(r"\[SUMMARY\]\s+PASS=(\d+)\s+FAIL=(\d+)")
 RESULT = re.compile(r"^Test_result:\s*(\S+)")
 QUESTA_PREFIX = re.compile(r"^#\s?")

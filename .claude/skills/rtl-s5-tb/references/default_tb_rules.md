@@ -71,6 +71,7 @@ din = 8'hA5;
 - Giá trị mong đợi lấy từ golden model (spec, vplan, công thức, mô hình trạng thái), cập nhật song song với stimulus – **không** bao giờ lấy từ output DUT (`expected = dut_out;` là sai).
 - `pass_count`, `fail_count` (`integer`) gán 0 trong `init_test`. Mỗi lần checker so sánh = một case: PASS → `pass_count = pass_count + 1;`, FAIL → `fail_count = fail_count + 1;`. PASS + FAIL = số lần checker được gọi.
 - So bằng `===`/`!==` (bắt được X/Z). Checker có width đúng tín hiệu so sánh (một task cho mỗi width cần so, thường 1–2).
+- Mọi checker in qua **một** task `log_case` (phần 6) để mọi dòng case trong log thẳng cột (mục "Căn cột" bên dưới).
 
 ### Định dạng log (chuẩn, `check_sim_log.py` đọc)
 
@@ -86,27 +87,45 @@ Mỗi testcase chạy thành một log riêng `sim/log/<ID>.log` (transcript Que
 
 ```text
 -- APB write test --
-[61] addr_0_wdata_A5A5A5A5 PASS | expected: A5A5A5A5 | actual: A5A5A5A5
-[101] addr_4_wdata_00000000 PASS | expected: 00000000 | actual: 00000000
+[      61] addr_0_wdata_A5A5A5A5                    PASS | expected: a5a5a5a5 | actual: a5a5a5a5
+[     101] addr_4_wdata_00000000                    PASS | expected: 00000000 | actual: 00000000
 -- APB read unwritten register test --
-[141] addr_0_unwritten PASS | expected: DEADBEEF | actual: DEADBEEF
+[     141] addr_0_unwritten                         PASS | expected: deadbeef | actual: deadbeef
 -- handshake test --
-[181] valid_1_ready_0 FAIL | expected: 0 | actual: 1
+[     181] valid_1_ready_0                          FAIL | expected:        0 | actual:        1
 [SUMMARY] PASS=3 FAIL=1
 Test_result: FAILED
 ```
 
+### Căn cột
+
+Mọi dòng case trong một log thẳng hàng thẳng cột, dù tên case hay width giá trị khác nhau:
+
+| Cột | Căn | Độ rộng (parameter phần 1) |
+| --- | --- | --- |
+| `<time>` trong `[ ]` | phải | `TIME_W` chữ số (mặc định 8, đủ tới 99 999 999 ns) |
+| `<case>` | trái, đệm khoảng trắng | `NAME_W` ký tự (mặc định 40; chọn ≥ tên case dài nhất của TB) |
+| `PASS` / `FAIL` | – | 4 ký tự (cố định) |
+| `<exp>`, `<act>` | phải | `VAL_W` chữ số hex = số chữ số `%h` của tín hiệu rộng nhất được so (vd. 64 bit → 16) |
+
+- Hiện thực bằng 3 hàm ở phần 7 (`str_len`, `pad_left`, `pad_right`, chuỗi `reg [8*64-1:0]`) và task `log_case` ở phần 6 – Verilog-2005 thuần, không dùng `%-40s`/`%8d` (độ rộng trường là mở rộng SystemVerilog).
+- Checker tạo chuỗi giá trị bằng `$sformat(s, "%h", v)` (đủ chữ số theo width của checker) rồi gọi `log_case`; không tự `$display` dòng case.
+- Tên case dài hơn `NAME_W` không bị cắt, chỉ dòng đó lệch – tăng `NAME_W` thay vì rút tên.
+- `[SUMMARY]`, `Test_result`, header `-- … test --` không đệm.
+
 - `-- <item name> test --`: in ở đầu chuỗi test trong `tc/<ID>.v`. `<item name>` là **tên tiếng Anh ngắn, đọc được, lấy từ vplan** (không thay bằng ID, không dịch): vplan mặc định – phần tên sau ID ở heading `### TC_<M>_001 – <tên>`; template bảng có cột `ID` – cột cụ thể nhất (thường `Sub item 2`), chỉ thêm cột phía trước (`Sub item 1`, rồi `Item`, nối bằng ` / `) khi cần để phân biệt với item khác, bỏ ô trống/`—` (vd. `-- DATA Register 0 / Reset value check test --`, `-- Single Write test --`). Lấy đúng danh sách header bằng `python3 .claude/skills/rtl-s5-tb/scripts/check_sim_log.py --items doc/vplan/<m>_vplan.<ext>`; checker dùng tên này để map về ID vplan. Chỉ ghi ID thay tên khi item trong vplan không có tên hoặc tên trùng với item khác. Mọi case in sau header thuộc item đó.
-- `[<time>]`: thời gian mô phỏng hiện tại, `$time` theo ns, in `%0d`.
+- `[<time>]`: thời gian mô phỏng hiện tại, `$time` theo ns, căn phải `TIME_W` chữ số (`[      61]`).
 - `<case>`: tên ngắn, không khoảng trắng, mô tả **đặc điểm input quan trọng** của case – `addr_0_wdata_A5A5A5A5`, `valid_1_ready_0`, `clr_1_en_1_pulse_1`; nhiều input quan trọng thì ghép đủ vào tên. Không dùng tên vô nghĩa kiểu `CASE_001`, `TEST_01`. Ghép động bằng `$sformat`.
-- `PASS`/`FAIL`: quyết định của checker. `expected`: giá trị golden model. `actual`: giá trị DUT. In bằng `%h` (bus ra đủ chữ số hex theo width, 1 bit ra `0`/`1`), không thêm tiền tố.
+- `PASS`/`FAIL`: quyết định của checker. `expected`: giá trị golden model. `actual`: giá trị DUT. In bằng `%h` (bus ra đủ chữ số hex theo width, 1 bit ra `0`/`1`), không thêm tiền tố, căn phải `VAL_W` chữ số.
 - Dấu phân cách giữ nguyên `| expected: ... | actual: ...`.
 - `[SUMMARY] PASS=<pass_count> FAIL=<fail_count>` in một lần cuối mô phỏng (trong `end_test`).
 - `Test_result: PASSED` khi FAIL = 0 và PASS > 0, ngược lại `Test_result: FAILED`; in ngay sau `[SUMMARY]`. `sim/report.csh` lấy từ thứ ba của dòng này làm kết quả.
 - ID vplan vẫn dùng cho máy: tên file `tc/<ID>.v`, `make TESTNAME=<ID>`, `sim/pat.list`, báo cáo.
 
 ```verilog
-$display("[%0d] %0s PASS | expected: %h | actual: %h", $time, name, exp, act);
+$sformat(exp_s, "%h", exp);
+$sformat(act_s, "%h", act);
+log_case(name, (act === exp), exp_s, act_s);   // in dòng thẳng cột (phần 6)
 ```
 
 ## 7. Chọn test, timeout, waveform, dữ liệu file
@@ -135,6 +154,10 @@ module tb_pulse_cnt;
   parameter CLK_PERIOD   = 20;
   parameter RESET_CYCLES = 5;
   parameter TIMEOUT_NS   = 100000;
+  // Log columns: time digits, case-name width, value digits (widest %h)
+  parameter TIME_W       = 8;
+  parameter NAME_W       = 40;
+  parameter VAL_W        = 1;
 
   reg            clk;
   reg            rst_n;
@@ -146,6 +169,8 @@ module tb_pulse_cnt;
   reg  [2:0]     ref_count;
   integer        pass_count;
   integer        fail_count;
+  reg  [8*64-1:0] exp_s;
+  reg  [8*64-1:0] act_s;
 
   // ============================================================
   // 2. DUT Instance
@@ -212,25 +237,81 @@ module tb_pulse_cnt;
   // ============================================================
   // 6. Checker
   // ============================================================
+  // One aligned log line: [time] case PASS|FAIL | expected: exp | actual: act
+  task log_case;
+    input [8*64-1:0] name;
+    input            pass;
+    input [8*64-1:0] exp_str;
+    input [8*64-1:0] act_str;
+    reg   [8*64-1:0] t_str;
+    begin
+      $sformat(t_str, "%0d", $time);
+      $display("[%0s] %0s %0s | expected: %0s | actual: %0s",
+               pad_left(t_str, TIME_W), pad_right(name, NAME_W),
+               pass ? "PASS" : "FAIL",
+               pad_left(exp_str, VAL_W), pad_left(act_str, VAL_W));
+    end
+  endtask
+
   task check_count;
-    input [8*48-1:0] name;
+    input [8*64-1:0] name;
     input [2:0]      exp;
     input [2:0]      act;
     begin
       if (act === exp) begin
         pass_count = pass_count + 1;
-        $display("[%0d] %0s PASS | expected: %h | actual: %h", $time, name, exp, act);
       end
       else begin
         fail_count = fail_count + 1;
-        $display("[%0d] %0s FAIL | expected: %h | actual: %h", $time, name, exp, act);
       end
+      $sformat(exp_s, "%h", exp);
+      $sformat(act_s, "%h", act);
+      log_case(name, (act === exp), exp_s, act_s);
     end
   endtask
 
   // ============================================================
   // 7. Helper Functions
   // ============================================================
+  // Number of characters of a string held in reg [8*64-1:0]
+  function integer str_len;
+    input [8*64-1:0] s;
+    integer          k;
+    begin
+      str_len = 0;
+      for (k = 0; k < 64; k = k + 1) begin
+        if (s[8*k +: 8] != 8'h0) begin
+          str_len = k + 1;
+        end
+      end
+    end
+  endfunction
+
+  // s right-aligned in a field of w characters (leading spaces)
+  function [8*64-1:0] pad_left;
+    input [8*64-1:0] s;
+    input integer    w;
+    integer          k;
+    begin
+      pad_left = s;
+      for (k = str_len(s); k < w; k = k + 1) begin
+        pad_left[8*k +: 8] = " ";
+      end
+    end
+  endfunction
+
+  // s left-aligned in a field of w characters (trailing spaces)
+  function [8*64-1:0] pad_right;
+    input [8*64-1:0] s;
+    input integer    w;
+    integer          k;
+    begin
+      pad_right = s;
+      for (k = str_len(s); k < w; k = k + 1) begin
+        pad_right = {pad_right[8*63-1:0], 8'h20};
+      end
+    end
+  endfunction
 
   // ============================================================
   // 8. Tasks
@@ -317,8 +398,8 @@ Vplan có item `### TC_PULSE_CNT_002 – count enable`; `sim/log/TC_PULSE_CNT_00
 
 ```text
 -- count enable test --
-[131] en_1_pulse_1 PASS | expected: 1 | actual: 1
-[171] en_0_pulse_1_hold PASS | expected: 1 | actual: 1
+[     131] en_1_pulse_1                             PASS | expected: 1 | actual: 1
+[     171] en_0_pulse_1_hold                        PASS | expected: 1 | actual: 1
 [SUMMARY] PASS=2 FAIL=0
 Test_result: PASSED
 ```

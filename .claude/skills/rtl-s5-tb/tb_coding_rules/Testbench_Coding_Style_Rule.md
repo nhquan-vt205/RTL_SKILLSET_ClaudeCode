@@ -130,19 +130,25 @@ Test_result: PASSED|FAILED
 Fields:
 
 - `<item name>`: a concise, human-readable VPLAN item name that still distinguishes the item (not replaced by the VPLAN ID). Use the most specific VPLAN field and add a parent field only when needed to tell items apart (e.g. `DATA Register 0 / Reset value check`, not `Register access / DATA Register 0 / Reset value check`). `check_sim_log.py --items <vplan>` lists the expected headers.
-- `<time>`: current simulation time (`$time`, ns).
+- `<time>`: current simulation time (`$time`, ns), right-aligned in `TIME_W` digits inside the brackets.
 - `<case>`: a short name without spaces describing the important input characteristics of the case (e.g. `addr_0_wdata_A5A5A5A5`, `valid_1_ready_0`); never a generic name like `CASE_001` or `TEST_01`.
-- `PASS`/`FAIL`: checker result; `expected`: golden-model value; `actual`: DUT value (printed with `%h`).
+- `PASS`/`FAIL`: checker result; `expected`: golden-model value; `actual`: DUT value (printed with `%h`, right-aligned in `VAL_W` digits).
 - Keep the exact separator `| expected: ... | actual: ...`.
+- **Column alignment:** every case line of a log is aligned in columns, whatever the case-name length or value width:
+  - `<time>` right-aligned in `TIME_W` digits (default 8);
+  - `<case>` left-aligned, padded with spaces to `NAME_W` characters (default 40; choose it ≥ the longest case name of the testbench – a longer name is never truncated, only that line shifts);
+  - `<exp>` and `<act>` right-aligned in `VAL_W` digits (= the `%h` digits of the widest compared signal).
+  - `TIME_W`, `NAME_W`, `VAL_W` are parameters in section 1. Every checker prints through one task `log_case` (section 6), using the Verilog-2005 helper functions `str_len`, `pad_left`, `pad_right` (section 7). Do not use field widths such as `%-40s` or `%8d` (SystemVerilog extension).
+  - `[SUMMARY]`, `Test_result` and the `-- … test --` header are not padded.
 - `Test_result`: `PASSED` when FAIL = 0 and PASS > 0, otherwise `FAILED`; printed right after `[SUMMARY]` (read by `sim/report.csh`).
 
 Example:
 
 ```text
 -- APB write test --
-[61] addr_0_wdata_A5A5A5A5 PASS | expected: A5A5A5A5 | actual: A5A5A5A5
+[      61] addr_0_wdata_A5A5A5A5                    PASS | expected: a5a5a5a5 | actual: a5a5a5a5
 -- handshake test --
-[181] valid_1_ready_0 FAIL | expected: 0 | actual: 1
+[     181] valid_1_ready_0                          FAIL | expected:        0 | actual:        1
 [SUMMARY] PASS=1 FAIL=1
 Test_result: FAILED
 ```
