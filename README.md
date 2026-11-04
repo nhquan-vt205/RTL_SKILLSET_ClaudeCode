@@ -44,7 +44,7 @@ Diagram là sơ đồ logic SVG đen trắng (MUX, register/FF, gate, ellipse op
 │   │   ├── coding_rules/         # (tùy chọn) coding rule RTL của bạn
 │   │   ├── references/default_rtl_rules.md
 │   │   └── scripts/check_preconditions.py, check_ports.py
-│   ├── rtl-s4-vplan/             # S4 (tùy chọn): vplan direct test
+│   ├── rtl-s4-vplan/             # S4 (tùy chọn): vplan direct test (cây Item → Sub item 1 → Sub item 2)
 │   │   ├── vplan_template/       # (tùy chọn) template vplan của bạn
 │   │   ├── references/test_selection.md
 │   │   └── scripts/check_preconditions.py
@@ -82,8 +82,8 @@ Công cụ: Python 3 (bắt buộc). Compile check RTL ở S3 (`make -C sim lint
 | `/rtl-s2-diagram <m> [--level Lx] [--cloud …] [--block …]` | Sơ đồ logic của module: một file `<m>.svg` đen trắng (mở bằng Chrome/Edge, chèn được vào Word/PPT), nhúng model phương trình cho S3. L1/L0: đề xuất phần gom thành cloud/khối và chờ bạn duyệt (`--cloud`/`--block` để chỉ định sẵn). |
 | `/rtl-s2-diagram <m> --from a,b --to x,y [--part p]` | Thêm góc nhìn `<m>_<part>.svg` chỉ chứa logic từ tín hiệu `a,b` tới `x,y` (S3 không đọc). |
 | `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, bỏ comment dòng của nó trong `sim/rtl.f`, compile/lint sạch qua `make -C sim lint TOP=<m>`. |
-| `/rtl-s4-vplan <m>` | (tùy chọn) Vplan direct test tối thiểu. |
-| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005 (`tb/tb_<m>.v`: 9 phần cố định, golden model + checker + bộ đếm PASS/FAIL, clock 20 ns, stimulus tại `posedge` + `#1`; mỗi item vplan một file `tc/<ID>.v`) + cập nhật `sim/rtl.f`, `sim/pat.list` (mặc định chỉ mở testcase của nhánh hiện tại, nhóm khác ở dạng `//TC_…`), log case căn thẳng cột, mô phỏng bằng QuestaSim (`make -C sim all TESTNAME=<ID>`) nếu có. |
+| `/rtl-s4-vplan <m>` | (tùy chọn) Vplan direct test tối thiểu, dạng cây Item → Sub item 1 → Sub item 2 theo chức năng của DUT (ô cha gộp: bảng HTML `rowspan` / merge cell; mỗi Item cấp cao nhất = một ID `TC_<M>_<NNN>` = một testcase S5). |
+| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005: TB top `tb/tb_<m>.v` (9 phần) + component `tb/tb_<m>_<role>.v` nối bằng port thật (clock/reset generator, driver, monitor, golden model, checker, logger), clock 20 ns, stimulus tại `posedge` + `#1`; mỗi Item vplan một file `tc/<ID>.v` chạy mọi nhánh con của Item; cập nhật `sim/rtl.f`, `sim/tb.f`, `sim/pat.list` (mặc định chỉ mở testcase của nhánh hiện tại, nhóm khác ở dạng `//TC_…`), log phân cấp `[ITEM]`/`[SUBITEM1]`/`[SUBITEM2]` + dòng check căn thẳng cột, mô phỏng bằng QuestaSim (`make -C sim all TESTNAME=<ID>`) nếu có. |
 
 Thiết kế nhiều cấp: S2→S3 cho các leaf trước, rồi block, cuối cùng top. Có thể nêu nhiều module trong một lệnh; không có lệnh "all" – chủ ý để bạn duyệt từng module.
 
@@ -110,7 +110,7 @@ Chỉ khi cần
 
 Tùy chọn (S4–S5)
   doc/vplan/<m>_vplan.*
-  tb/tb_<m>.v, tc/<ID>.v, sim/rtl.f, sim/pat.list
+  tb/tb_<m>.v, tb/tb_<m>_<role>.v, tc/<ID>.v (một file mỗi Item), sim/rtl.f, sim/tb.f, sim/pat.list
 ```
 
 ## 6. Gate của từng stage

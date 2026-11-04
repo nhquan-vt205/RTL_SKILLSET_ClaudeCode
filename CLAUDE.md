@@ -11,10 +11,10 @@ Project thiết kế RTL theo flow 5 stage, mỗi stage là một skill trong `.
 | S1 | `/rtl-s1-spec` | Toàn project | `doc/spec/`, `sim/rtl.f` + `sim/pat.list` (mọi module ở dạng comment, nhóm theo nhánh) |
 | S2 | `/rtl-s2-diagram <m> [--level L0\|L1\|L2] [--cloud …] [--block …] [--from … --to …]` | Module được nêu | `doc/diagram/<m>/` |
 | S3 | `/rtl-s3-rtl <m>` | Module được nêu | `rtl/<m>.v` (Verilog-2005), dòng của nó trong `sim/rtl.f` |
-| S4 | `/rtl-s4-vplan <m>` | Module được nêu (tùy chọn) | `doc/vplan/` |
-| S5 | `/rtl-s5-tb <m>` | Module được nêu (tùy chọn) | `tb/tb_<m>.v`, `tc/<ID>.v`, `sim/` (rtl.f, pat.list) |
+| S4 | `/rtl-s4-vplan <m>` | Module được nêu (tùy chọn) | `doc/vplan/` (cây Item → Sub item 1 → Sub item 2, ô cha gộp) |
+| S5 | `/rtl-s5-tb <m>` | Module được nêu (tùy chọn) | `tb/tb_<m>.v` + component `tb/tb_<m>_<role>.v`, `tc/<ID>.v` (một file mỗi Item vplan), `sim/` (rtl.f, tb.f, pat.list) |
 
-Cấu trúc mô phỏng phẳng (không lớp `<m>/`): `rtl/`, `tb/`, `tc/` chỉ chứa mã HDL; `sim/` là môi trường QuestaSim dùng chung (Makefile, `*.f`, `pat.list`, `*.csh`, `*.tcl`, `exclude.do`, `script/`) – `init_project` chép sẵn từ `rtl-s5-tb/references/sim_env/`, mọi file mô phỏng sinh ra trong `sim/` không được commit. Mọi bước compile/mô phỏng của S1–S5 (S3 `make -C sim lint TOP=<m>`, S5 `make -C sim all TESTNAME=<ID>`) đọc và chạy qua `sim/`, không tự gõ lệnh simulator; dữ liệu test ở `doc/database/input/` và `doc/database/output/`.
+Cấu trúc mô phỏng phẳng (không lớp `<m>/`): `rtl/`, `tb/` (TB top + component), `tc/` (một file mỗi Item cấp cao nhất của vplan) chỉ chứa mã HDL; `sim/` là môi trường QuestaSim dùng chung (Makefile, `*.f`, `pat.list`, `*.csh`, `*.tcl`, `exclude.do`, `script/`) – `init_project` chép sẵn từ `rtl-s5-tb/references/sim_env/`, mọi file mô phỏng sinh ra trong `sim/` không được commit. Mọi bước compile/mô phỏng của S1–S5 (S3 `make -C sim lint TOP=<m>`, S5 `make -C sim all TESTNAME=<ID>`) đọc và chạy qua `sim/`, không tự gõ lệnh simulator; dữ liệu test ở `doc/database/input/` và `doc/database/output/`.
 
 ## Nhánh git
 
@@ -25,7 +25,7 @@ Cấu trúc mô phỏng phẳng (không lớp `<m>/`): `rtl/`, `tb/`, `tc/` ch�
   - top (cùng helper của riêng top) làm trên `main`, sau khi mọi nhánh module con đã kiểm thử xong và merge vào `main`;
   - chế độ đơn: nhánh `<m>`. Bảng thiếu cột `Branch` → suy theo các quy tắc trên và nêu trong báo cáo.
 - **Đầu mỗi lần chạy S2–S5** (sau gate): nhánh hiện tại khác `<b>` → báo nhánh đúng và lệnh chuyển/tạo (`git checkout -b <b> main`), chỉ chuyển khi người dùng đồng ý.
-- **Commit/push chỉ khi người dùng yêu cầu**: commit đúng các file đầu ra của stage (`S<n> <m>: <tóm tắt>`), `git push -u origin <b>`. Hạ tầng dùng chung (skill, `sim/` env) commit trên `main` rồi merge vào các nhánh. Merge nhánh module vào `main` chỉ khi mọi module con đã kiểm thử xong – xung đột ở `sim/rtl.f`, `sim/pat.list` (nếu có) giữ mọi dòng.
+- **Commit/push chỉ khi người dùng yêu cầu**: commit đúng các file đầu ra của stage (`S<n> <m>: <tóm tắt>`), `git push -u origin <b>`. Hạ tầng dùng chung (skill, `sim/` env) commit trên `main` rồi merge vào các nhánh. Merge nhánh module vào `main` chỉ khi mọi module con đã kiểm thử xong – xung đột ở `sim/rtl.f`, `sim/tb.f`, `sim/pat.list` (nếu có) giữ mọi dòng.
 - **`sim/pat.list` mặc định theo nhánh** (regression của nhánh nào chạy test của nhánh đó): trên nhánh `<b>` chỉ ID testcase của nhóm `// --- <b> ---` để mở, ID của mọi nhóm khác comment bằng tiền tố `//` (`//TC_<M>_<NNN>`); trên `main` chỉ mở ID của top (nhóm `// --- main ---`). Sau mỗi lần merge (nhánh module vào `main`, hoặc `main` vào nhánh module) và mỗi lần S5 ghi `pat.list`, đưa file về đúng mặc định của nhánh hiện tại: comment ID của nhóm khác, giữ mọi dòng (không xóa ID). Người dùng tự mở comment khi muốn chạy regression khác – đó là thay đổi tạm, không tự đưa về mặc định trừ khi merge hoặc S5 ghi lại file.
 
 ## Tài liệu co giãn theo độ phức tạp phần cứng
@@ -70,7 +70,7 @@ Diagram S2 là một file SVG đen trắng `<m>.svg` theo thư viện ký hiệu
 
 ## Quy ước đặt tên (khi input không quy định khác)
 
-Module `snake_case`; port `_i` / `_o`; active-low `_n`; thanh ghi `_q`, giá trị kế tiếp `_d`; parameter `UPPER_SNAKE_CASE`; instance `u_<vai trò>`. `OPEN-<số>` cho giả định; test `TC_<MODULE>_<NNN>`. `REQ-`/`DAT-`/`CTL-` ID chỉ dùng ở IP lớn cần truy vết giữa nhiều module.
+Module `snake_case`; port `_i` / `_o`; active-low `_n`; thanh ghi `_q`, giá trị kế tiếp `_d`; parameter `UPPER_SNAKE_CASE`; instance `u_<vai trò>`. `OPEN-<số>` cho giả định; `TC_<MODULE>_<NNN>` = ID của một Item cấp cao nhất của vplan = một testcase S5 (`tc/<ID>.v`, `TESTNAME`, `pat.list`, log), nhánh con truy vết bằng đường dẫn `<ID> › <Sub item 1> › <Sub item 2>`; component testbench `tb_<m>_<role>`, instance `u_<role>`. `REQ-`/`DAT-`/`CTL-` ID chỉ dùng ở IP lớn cần truy vết giữa nhiều module.
 
 ## Ngôn ngữ và báo cáo
 
@@ -78,7 +78,7 @@ Module `snake_case`; port `_i` / `_o`; active-low `_n`; thanh ghi `_q`, giá tr�
   - Phần mô tả trong tài liệu được tạo (spec, notes, phần giải thích của vplan): tiếng Anh trước, sau đó là bản dịch tiếng Việt trung thành, đánh dấu `_VI:_`. Bản tiếng Anh là bản chuẩn; bản tiếng Việt không thêm, bớt hay đổi yêu cầu.
   - Mọi bảng trong tài liệu được tạo chỉ dùng tiếng Anh (tiêu đề và ô); không có ô hai ngôn ngữ.
   - Chỉ tiếng Anh: code RTL/testbench và comment, tên định danh, ID VPLAN, đường dẫn, lệnh, diagram SVG (nhãn, comment, model), dấu hiệu máy đọc (`Type: … · Level: … · Status: …`, `STATUS:`), simulation log.
-  - VPLAN: tên item, sub item, test sequence, pass condition chỉ tiếng Anh – S5 chép tên item vào log (`-- Reset value check test --`).
+  - VPLAN: tên item, sub item, test sequence, pass condition chỉ tiếng Anh – S5 in nguyên văn tên nhánh vào log phân cấp (`[ITEM] Register access` → `[SUBITEM1] DATA Register 0` → `[SUBITEM2] Reset value check`).
   - Rule người dùng (nguyên tắc 14) vẫn được ưu tiên; `doc/spec/source/` giữ ngôn ngữ gốc.
 - Cuối mỗi lần chạy: báo cáo ngắn **trong chat** – trạng thái, file đã tạo/sửa/xóa, vấn đề còn mở, lệnh tiếp theo.
 
