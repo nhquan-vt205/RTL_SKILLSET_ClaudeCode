@@ -24,18 +24,32 @@ Sub item 2); một nút hoặc là lá (có Test sequence + Pass condition) ho�
 Item duy nhất, tên anh em dưới cùng cha duy nhất (cụm cùng cha liên tiếp, không lặp tên cha).
 
 Log (default_tb_rules.md mục 7):
+  [TEST] <context>                                              bối cảnh đầu log (không đếm)
   [ITEM] <Item>                                                 một lần ở đầu log
     [SUBITEM1] <Sub item 1>                                     khi bắt đầu nhóm (nếu cấp tồn tại)
       [SUBITEM2] <Sub item 2>                                   khi bắt đầu lá (nếu cấp tồn tại)
-  [<time>] <case> PASS|FAIL | expected: <exp> | actual: <act>  check thuộc nhánh lá đang mở
-  [SUMMARY] PASS=<n> FAIL=<n>
+  <prefix> [<TAG>] <text>                                       dòng sự kiện (APB WRITE … OK|SLVERR, DRIVE,
+                                                                RESET, WAIT, OBSERVE, WATCH END …) – không đếm
+  <prefix> [<TAG>] <text> expected: <e> actual: <a> PASS|FAIL [(<note>)]
+                                                                dòng check (APB READ, WATCH, CHECK, APB WRITE
+                                                                lệch response …): đếm đúng 1, thuộc nhánh lá
+                                                                đang mở; verdict là từ cuối dòng, sau nó chỉ
+                                                                có thể có một chú thích ngắn trong ngoặc
+  <prefix> [TIMEOUT|PROTOCOL ERROR|LOG ERROR] <text>            lỗi không phải phép so (đếm vào FAIL)
+  [SUMMARY] PASS=<n> FAIL=<n>                                   PASS = số dòng check PASS; FAIL = số dòng
+                                                                check FAIL + số dòng lỗi (lỗi lặp của một
+                                                                watch đã gộp vào một dòng FAIL)
   Test_result: PASSED|FAILED
-Thụt lề header chỉ để đọc; thẻ [ITEM]/[SUBITEM1]/[SUBITEM2] quyết định cấp.
+  <prefix> = [t=<ns> ns clk=<số cạnh lên từ đầu mô phỏng>]
+Thụt lề header chỉ để đọc; thẻ [ITEM]/[SUBITEM1]/[SUBITEM2] quyết định cấp. [FIRST FAIL] (nếu có) bị bỏ qua.
 
 Kiểm: bảng vplan sai cấu trúc · Item chưa chạy · nhánh lá thiếu / không có check · nhánh thừa · sai cha
 · sai thứ tự cấp (SUBITEM2 không có SUBITEM1, check ngoài nhánh lá) · nhánh in lại / sai thứ tự vplan
-· check FAIL · dòng check sai định dạng · log <ID>.log in Item khác · nhiều [ITEM] trong một log · Item
-trùng giữa các log · thiếu/trùng/lệch [SUMMARY] và Test_result · [TIMEOUT]/[LOG ERROR]/$fatal/FATAL.
+· check FAIL · dòng check sai định dạng (PASS|FAIL cuối dòng mà thiếu 'expected: … actual: …', thiếu tiền
+tố) · định dạng cũ ('[<time>] <case> PASS|FAIL', '[t=… c=… <phase> txn=…]', '[CHECK …] PASS | expected:')
+· clk giảm dần (bộ đếm clock bị reset) · log <ID>.log in Item khác · nhiều [ITEM] trong một log · Item
+trùng giữa các log · thiếu/trùng/lệch [SUMMARY], Test_result sai · [TIMEOUT]/[PROTOCOL ERROR]/
+[LOG ERROR]/$fatal/FATAL.
 Mã thoát 0 = mọi nhánh lá của mọi Item cần kiểm đều PASS và log nhất quán; 1 = có vấn đề; 2 = lỗi dùng.
 """
 import argparse
@@ -54,9 +68,16 @@ NONE_MARK = {"-", "–", "—"}
 FILLER = {"general", "basic", "other", "others", "misc", "common", "default"}
 
 HEADER = re.compile(r"^(?P<ind>\s*)\[(?P<tag>ITEM|SUBITEM1|SUBITEM2)\]\s+(?P<name>.+?)\s*$")
-CASE = re.compile(r"^\[\s*(?P<t>\d+)\]\s+(?P<case>\S+)\s+(?P<res>PASS|FAIL)\s+\|\s+expected:\s*(?P<exp>.*?)"
-                  r"\s+\|\s+actual:\s*(?P<act>.*?)\s*$")
-CASE_LIKE = re.compile(r"^\s*\[\s*\d+\]\s+\S+\s+(PASS|FAIL)\b")
+PREFIX = r"\[t=\s*(?P<t>\d+) ns clk=\s*(?P<c>\d+)\]"
+LINE = re.compile(r"^" + PREFIX + r"\s+\[(?P<tag>[^\]]+)\]\s*(?P<body>.*?)\s*$")
+VERDICT = re.compile(r"\b(PASS|FAIL)(\s+\(.*\))?$")
+CHECK_BODY = re.compile(r"^(?P<text>.*?)\s*expected:\s*(?P<exp>.*?)\s+actual:\s*(?P<act>.*?)\s+(?P<res>PASS|FAIL)"
+                        r"(?:\s+\((?P<note>.*)\))?$")
+ERROR_KINDS = {"TIMEOUT", "PROTOCOL ERROR", "LOG ERROR"}
+ERROR_TAG = re.compile(r"\[(?P<kind>TIMEOUT|PROTOCOL ERROR|LOG ERROR)\]")
+OLD_PREFIX = re.compile(r"\[t=\s*\d+ ns c=\s*\d+ \S+\s+txn=")
+OLD_CHECK = re.compile(r"\[CHECK [^\]]+\]\s+(PASS|FAIL) \| expected:")
+OLD_CASE = re.compile(r"^\s*\[\s*\d+\]\s+\S+\s+(PASS|FAIL)\b")
 SUMMARY = re.compile(r"\[SUMMARY\]\s+PASS=(\d+)\s+FAIL=(\d+)")
 RESULT = re.compile(r"^Test_result:\s*(\S+)")
 QUESTA_PREFIX = re.compile(r"^#( |$)")
@@ -265,7 +286,7 @@ class Node:
     def __init__(self, name, level, parent=None, tid=None, row=0):
         self.name, self.level, self.parent, self.tid, self.row = name, level, parent, tid, row
         self.children, self.leaf = [], False
-        self.cases, self.visits = [], 0
+        self.cases, self.errors, self.visits = [], [], 0
 
     @property
     def item(self):
@@ -473,7 +494,8 @@ def check_logs(logs, items, id_re, problems):
         item = n1 = cur = None
         bad_ctx = False                         # đang ở nhánh không hợp lệ (đã báo)
         last_idx = {}                           # id(parent) → chỉ số anh em mở gần nhất
-        l_pass = l_fail = 0
+        l_pass = l_fail = l_err = 0
+        last_clk = -1
         summaries, verdicts = [], []
 
         def enter(node, parent, at):
@@ -556,24 +578,59 @@ def check_logs(logs, items, id_re, problems):
                 cur, bad_ctx = node, False
                 continue
 
-            m = CASE.match(s)
+            # Định dạng cũ (S5 phiên trước): báo một lần mỗi dòng, không đếm
+            if OLD_PREFIX.search(s) or OLD_CHECK.search(s) or OLD_CASE.match(s):
+                problems.append(f"{at}: dòng định dạng cũ – S5 mới in '[t=<ns> ns clk=<n>] [<TAG>] … "
+                                f"expected: <e> actual: <a> PASS|FAIL', chạy lại /rtl-s5-tb: {s.strip()[:100]}")
+                continue
+            m = LINE.match(s)
             if m:
-                if m.group("res") == "PASS":
+                c = int(m.group("c"))
+                if c < last_clk:
+                    problems.append(f"{at}: clk={c} nhỏ hơn clk={last_clk} của dòng trước – bộ đếm clock "
+                                    f"phải tăng xuyên suốt, không reset")
+                last_clk = max(last_clk, c)
+                tag, body = m.group("tag").strip(), m.group("body")
+                if tag in ERROR_KINDS:
+                    # Lỗi không phải phép so: đếm vào FAIL của [SUMMARY]
+                    l_err += 1
+                    if cur is not None and cur.leaf:
+                        cur.errors.append((at, s.strip()))
+                    problems.append(f"{at}: mô phỏng báo lỗi: {s.strip()[:120]}")
+                    continue
+                if not VERDICT.search(body):
+                    continue                    # dòng sự kiện: không bao giờ đếm
+                k = CHECK_BODY.match(body)
+                if not k:
+                    problems.append(f"{at}: dòng kết thúc bằng PASS/FAIL nhưng thiếu 'expected: <e> actual: "
+                                    f"<a>' – không phải dòng check hợp lệ: {s.strip()[:120]}")
+                    continue
+                if k.group("res") == "PASS":
                     l_pass += 1
                 else:
                     l_fail += 1
+                rec = {"t": m.group("t"), "c": m.group("c"), "case": f"[{tag}] {k.group('text')}".strip(),
+                       "res": k.group("res"), "exp": k.group("exp"), "act": k.group("act"),
+                       "note": k.group("note") or ""}
                 if cur is None:
                     if not bad_ctx:
-                        problems.append(f"{at}: check '{m.group('case')}' nằm trước [ITEM]")
+                        problems.append(f"{at}: check '{rec['case']}' nằm trước [ITEM]")
                 elif not cur.leaf:
-                    problems.append(f"{at}: check '{m.group('case')}' nằm ở '{cur.path()}' – chưa phải nhánh "
+                    problems.append(f"{at}: check '{rec['case']}' nằm ở '{cur.path()}' – chưa phải nhánh "
                                     f"lá (thiếu [{LEVEL_TAG[cur.level + 1]}])")
                 else:
-                    cur.cases.append((at, m))
+                    cur.cases.append((at, rec))
                 continue
-            if CASE_LIKE.match(s):
-                problems.append(f"{at}: dòng check sai định dạng (cần '[<time>] <case> PASS|FAIL | "
-                                f"expected: <exp> | actual: <act>'): {s.strip()[:120]}")
+            if ERROR_TAG.search(s):
+                l_err += 1
+                if cur is not None and cur.leaf:
+                    cur.errors.append((at, s.strip()))
+                problems.append(f"{at}: dòng lỗi thiếu tiền tố '[t=<ns> ns clk=<n>]': {s.strip()[:100]}")
+                continue
+            st = s.strip()
+            if VERDICT.search(st) and not st.startswith("Test_result") and not SUMMARY.search(st):
+                problems.append(f"{at}: dòng mang PASS/FAIL không có tiền tố '[t=<ns> ns clk=<n>] [<TAG>]': "
+                                f"{st[:100]}")
                 continue
             m = SUMMARY.search(s)
             if m:
@@ -581,23 +638,23 @@ def check_logs(logs, items, id_re, problems):
             m = RESULT.match(s.strip())
             if m:
                 verdicts.append(m.group(1))
-            if re.search(r"\[TIMEOUT\]|\[LOG ERROR\]|\$fatal|FATAL|\*\* Fatal", s):
+            if re.search(r"\$fatal|FATAL|\*\* Fatal", s):
                 problems.append(f"{at}: mô phỏng dừng bất thường: {s.strip()[:120]}")
 
         n_pass += l_pass
-        n_fail += l_fail
+        n_fail += l_fail + l_err
         if not any(r == lname for r in run.values()) and not bad_ctx:
             problems.append(f"{lname}: không có dòng [ITEM] <Item>")
         if not summaries:
             problems.append(f"{lname}: thiếu dòng [SUMMARY] PASS=<n> FAIL=<n>")
         else:
             sp, sf = summaries[-1]
-            if (sp, sf) != (l_pass, l_fail):
-                problems.append(f"{lname}: [SUMMARY] PASS={sp} FAIL={sf} lệch với số dòng check trong log "
-                                f"(PASS={l_pass} FAIL={l_fail})")
+            if (sp, sf) != (l_pass, l_fail + l_err):
+                problems.append(f"{lname}: [SUMMARY] PASS={sp} FAIL={sf} lệch với log (dòng check PASS="
+                                f"{l_pass}, dòng check FAIL={l_fail} + dòng lỗi={l_err})")
             if len(summaries) > 1:
                 problems.append(f"{lname}: có {len(summaries)} dòng [SUMMARY]")
-        want = "PASSED" if l_fail == 0 and l_pass > 0 else "FAILED"
+        want = "PASSED" if l_fail + l_err == 0 and l_pass > 0 else "FAILED"
         if len(verdicts) != 1:
             problems.append(f"{lname}: cần đúng một dòng 'Test_result: PASSED|FAILED' (có {len(verdicts)})")
         elif verdicts[0] != want:
@@ -653,7 +710,7 @@ def main():
     run, n_pass, n_fail = check_logs(logs, items, a.id_re, problems)
     todo = [i for i in items if id(i) in run or not a.partial]
     print(f"Vplan: {len(items)} Item, {sum(len(i.leaves()) for i in items)} nhánh lá · Log: {len(logs)} file, "
-          f"{len(run)} Item chạy, {n_pass} check PASS, {n_fail} check FAIL")
+          f"{len(run)} Item chạy, {n_pass} check PASS, {n_fail} FAIL (check FAIL + dòng lỗi)")
 
     bad = 0
     for it in todo:
@@ -663,13 +720,13 @@ def main():
             continue
         rows, fails = [], 0
         for lf in it.leaves():
-            nf = sum(1 for _, m in lf.cases if m.group("res") == "FAIL")
+            nf = sum(1 for _, r in lf.cases if r["res"] == "FAIL")
             if not lf.visits and lf is not it:
                 st = "THIẾU (nhánh không chạy)"
             elif not lf.cases:
                 st = "KHÔNG CÓ CHECK"
-            elif nf:
-                st = f"FAIL ({nf}/{len(lf.cases)} check)"
+            elif nf or lf.errors:
+                st = f"FAIL ({nf}/{len(lf.cases)} check" + (f", {len(lf.errors)} lỗi)" if lf.errors else ")")
             else:
                 st = f"PASS ({len(lf.cases)} check)"
             fails += not st.startswith("PASS")
@@ -680,10 +737,13 @@ def main():
         for lf, st in rows:
             if lf is not it:
                 print(f"      {lf.path(with_item=False)[:58]:<58} {st}")
-            for at, m in lf.cases:
-                if m.group("res") == "FAIL":
-                    print(f"          {at} [{m.group('t')}] {m.group('case')}: "
-                          f"expected {m.group('exp')} · actual {m.group('act')}")
+            for at, r in lf.cases:
+                if r["res"] == "FAIL":
+                    note = f" ({r['note']})" if r["note"] else ""
+                    print(f"          {at} [t={r['t']} ns clk={r['c']}] {r['case']}: expected {r['exp']} "
+                          f"· actual {r['act']}{note}")
+            for at, line in lf.errors:
+                print(f"          {at} {line[:110]}")
     for w in warns:
         print("  [CẢNH BÁO] " + w)
     for p in problems:

@@ -1,0 +1,48 @@
+[TEST] TC_TIMER_TOP_012: cnt_ctrl debug halt through timer_top: dbg_mode & HALT_REQ holds the counter, HALT_ACK, resume by HALT_REQ or by dbg_mode
+[TEST] DUT timer_top, public ports only (APB, dbg_mode); spec doc/spec/architecture/{timer_top,apb_slave,cnt_ctrl}_spec.md, doc/spec/register_file/register_map.md
+[TEST] Time: t in ns; clk = sys_clk rising edges since time 0 (20 ns period, never reset); inputs applied at rising edge + 1 ns, outputs sampled at the falling edge; APB line at completion, setup at clk - 2
+[TEST] Checks: expected from the golden model tb_timer_top_model; outputs compared at every falling edge, only deviations printed; APB WRITE ... OK = no error response (not a data check)
+[ITEM] cnt_halt_chk
+  [SUBITEM1] Halt in debug mode
+    [GOAL] DIV_VAL 1 (1 step / 2 cycles): dbg_mode = 1 alone does not halt; HALT_REQ = 1 halts (TDR0 and divider phase held); HALT_REQ = 0 resumes
+[t=       0 ns clk=     0] [RESET]           sys_rst_n = 0 (asserted for 2 rising edges)
+[t=      31 ns clk=     2] [RESET]           sys_rst_n = 1 (released)
+[t=     100 ns clk=     5] [APB WRITE TCR]   addr: 0x000 data: 0x00000103 strb: 0b0011 OK
+[t=     160 ns clk=     8] [APB READ TDR0]   addr: 0x004 expected:   1 counts actual:   1 counts PASS
+[t=     171 ns clk=     9] [DRIVE]           dbg_mode: 0 -> 1
+[t=     240 ns clk=    12] [APB WRITE THCSR] addr: 0x01C data: 0x00000001 strb: 0b0001 OK
+[t=     300 ns clk=    15] [APB READ THCSR]  addr: 0x01C expected: 0x00000003 actual: 0x00000003 PASS
+[t=     360 ns clk=    18] [APB READ TDR0]   addr: 0x004 expected:   3 counts actual:   6 counts FAIL
+[t=     371 ns clk=    19] [WAIT]            8 cycles, bus idle (clk=19..26)
+[t=     580 ns clk=    29] [APB READ TDR0]   addr: 0x004 expected:   3 counts actual:  11 counts FAIL
+[t=     640 ns clk=    32] [APB WRITE THCSR] addr: 0x01C data: 0x00000000 strb: 0b0001 OK
+[t=     700 ns clk=    35] [APB READ THCSR]  addr: 0x01C expected: 0x00000000 actual: 0x00000000 PASS
+[t=     760 ns clk=    38] [APB READ TDR0]   addr: 0x004 expected:   6 counts actual:  16 counts FAIL
+  [SUBITEM1] Halt without debug mode
+    [GOAL] DIV_EN 0 (1 step / cycle): HALT_REQ = 1 then dbg_mode = 1 halts; dbg_mode = 0 with HALT_REQ = 1 kept: HALT_ACK 0, counting resumes
+[t=     761 ns clk=    38] [DRIVE]           dbg_mode: 1 -> 0
+[t=     761 ns clk=    38] [RESET]           sys_rst_n = 0 (asserted for 2 rising edges)
+[t=     791 ns clk=    40] [RESET]           sys_rst_n = 1 (released)
+[t=     860 ns clk=    43] [APB WRITE TCR]   addr: 0x000 data: 0x00000001 strb: 0b0001 OK
+[t=     920 ns clk=    46] [APB READ TDR0]   addr: 0x004 expected:   2 counts actual:   2 counts PASS
+[t=     980 ns clk=    49] [APB WRITE THCSR] addr: 0x01C data: 0x00000001 strb: 0b0001 OK
+[t=     991 ns clk=    50] [DRIVE]           dbg_mode: 0 -> 1
+[t=    1060 ns clk=    53] [APB READ THCSR]  addr: 0x01C expected: 0x00000003 actual: 0x00000003 PASS
+[t=    1120 ns clk=    56] [APB READ TDR0]   addr: 0x004 expected:   6 counts actual:  12 counts FAIL
+[t=    1131 ns clk=    57] [WAIT]            8 cycles, bus idle (clk=57..64)
+[t=    1340 ns clk=    67] [APB READ TDR0]   addr: 0x004 expected:   6 counts actual:  23 counts FAIL
+[t=    1351 ns clk=    68] [DRIVE]           dbg_mode: 1 -> 0
+[t=    1420 ns clk=    71] [APB READ THCSR]  addr: 0x01C expected: 0x00000001 actual: 0x00000001 PASS
+[t=    1480 ns clk=    74] [APB READ TDR0]   addr: 0x004 expected:  12 counts actual:  30 counts FAIL
+  [SUBITEM1] TDR write while halted
+    [GOAL] halted with TIM_EN = 1: a TDR0 write completes without error but is ignored
+[t=    1481 ns clk=    74] [RESET]           sys_rst_n = 0 (asserted for 2 rising edges)
+[t=    1511 ns clk=    76] [RESET]           sys_rst_n = 1 (released)
+[t=    1531 ns clk=    77] [DRIVE]           dbg_mode: 0 -> 1
+[t=    1600 ns clk=    80] [APB WRITE TCR]   addr: 0x000 data: 0x00000001 strb: 0b0001 OK
+[t=    1660 ns clk=    83] [APB WRITE THCSR] addr: 0x01C data: 0x00000001 strb: 0b0001 OK
+[t=    1720 ns clk=    86] [APB WRITE TDR0]  addr: 0x004 data: 0x00000077 strb: 0b1111 OK
+[t=    1780 ns clk=    89] [APB READ TDR0]   addr: 0x004 expected:   3 counts actual:   8 counts FAIL
+[t=    1840 ns clk=    92] [APB READ THCSR]  addr: 0x01C expected: 0x00000003 actual: 0x00000003 PASS
+[SUMMARY] PASS=7 FAIL=7
+Test_result: FAILED

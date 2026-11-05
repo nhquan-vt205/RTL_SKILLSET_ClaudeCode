@@ -1,17 +1,17 @@
 # Rule testbench mặc định (chỉ dùng cho chỗ tb_coding_rules/ không nói tới)
 
-Mục tiêu: testbench direct, tự kiểm, mô phỏng tất định, đọc được ở mức sinh viên, gồm các component có kết nối thật. Không UVM, class, SystemVerilog interface/package, SVA, coverage, random, framework scoreboard.
+Mục tiêu: testbench direct, tự kiểm, mô phỏng tất định, đọc được ở mức sinh viên, gồm các component có kết nối thật. **Mọi expected dùng để kết luận PASS/FAIL do golden model tính.** Log ngắn, cô đọng: đọc cùng spec là thấy ngay đang kiểm chức năng gì, TB đã tác động gì lên DUT và khi nào, checkpoint nào sai đầu tiên (mục 7); model tính mọi expected bên trong nhưng không in diễn giải. Không UVM, class, SystemVerilog interface/package, SVA, coverage, random, framework scoreboard.
 
 ## 1. Ngôn ngữ và file
 
 - **Verilog-2005 (IEEE 1364-2005)**. Ba loại file, đều chỉ là mã HDL, đặt phẳng:
-  - `tb/tb_<m>.v`, module top `tb_<m>`: nối DUT với các component, task dùng chung, cấu trúc 9 phần (mục 3).
+  - `tb/tb_<m>.v`, module top `tb_<m>`: nối DUT với các component, helper trình bày log, task sequence dùng chung, cấu trúc 9 phần (mục 3).
   - `tb/tb_<m>_<role>.v`, module `tb_<m>_<role>`: một component của môi trường (mục 2). Tiền tố `tb_<m>_` tránh trùng tên giữa các DUT và với module RTL; không đặt tên trùng một module trong `rtl/`.
-  - `tc/<ID>.v`, một file mỗi **Item cấp cao nhất** của vplan (`<ID>` = ID Item `TC_<M>_<NNN>`): kịch bản của mọi nhánh con của Item, được `make build` chép thành `sim/run_test.v` và include vào phần 9 của TB top (mục 8).
+  - `tc/<ID>.v`, một file mỗi **Item cấp cao nhất** của vplan (`<ID>` = ID Item `TC_<M>_<NNN>`): kịch bản stimulus của mọi nhánh con của Item, được `make build` chép thành `sim/run_test.v` và include vào phần 9 của TB top (mục 8).
 - Phải là cú pháp Verilog-2005 thật – không phải đổi đuôi một file SystemVerilog.
-- Dùng: `reg`, `wire`, `integer`, `parameter`, `localparam`, `module`/port ANSI, `always`, `initial`, `task`, `function`, `if`, `case`, `for`, `while`, `repeat`, `wait`, khối có tên `begin : <name>`, `$display`, `$write`, `$sformat`, `$value$plusargs`, `$test$plusargs`, `$fopen`/`$fgets`/`$sscanf` (khi đọc file dữ liệu), `$finish`, `` `include ``, gọi task theo tên phân cấp (`u_drv.cycle(...)`).
-- **Cấm** (SystemVerilog): `logic`, `bit`, `byte`, `int`, `string`, `always_ff`, `always_comb`, `always_latch`, `typedef`, `enum`, `struct`, `union`, `interface`/`modport`, `package`/`import`, `class`, `virtual`, `foreach`, queue, mảng động, `mailbox`, `assert`/`property` (SVA), cast `type'(...)`, literal `'0`/`'1`, `$fatal`, khai báo biến trong `for` (`for (int i …)`).
-- Chuỗi (tên nhánh, tên case): `reg [8*64-1:0]` (≤ 64 ký tự; tên vplan dài hơn → tăng độ rộng thống nhất ở mọi nơi); ghép chuỗi động bằng `$sformat(case_name, "addr_%0h_wdata_%h", addr, wdata);`; in bằng `%0s`.
+- Dùng: `reg`, `wire`, `integer`, `time`, `parameter`, `localparam`, `module`/port ANSI, `always`, `initial`, `task`, `function`, `if`, `case`, `for`, `while`, `repeat`, `wait`, khối có tên `begin : <name>`, `$display`, `$sformat`, `$value$plusargs`, `$test$plusargs`, `$fopen`/`$fgets`/`$sscanf` (khi đọc file dữ liệu), `$finish`, `` `include ``, gọi task/function theo tên phân cấp (`u_drv.apb_write(...)`, `tb_<m>.u_log.fmt_hex(...)`).
+- **Cấm** (SystemVerilog): `logic`, `bit`, `byte`, `int`, `string`, `always_ff`, `always_comb`, `always_latch`, `typedef`, `enum`, `struct`, `union`, `interface`/`modport`, `package`/`import`, `class`, `virtual`, `foreach`, queue, mảng động, `mailbox`, `assert`/`property` (SVA), cast `type'(...)`, literal `'0`/`'1`, `$fatal`, `++`/`+=`, khai báo biến trong `for` (`for (int i …)`). `event` là từ khóa – không đặt tên task là `event`.
+- Chuỗi: tên nhánh/tag `reg [8*64-1:0]`, giá trị đã định dạng `reg [8*80-1:0]`, nội dung một dòng log `reg [8*200-1:0]` (dài hơn → tăng độ rộng thống nhất ở mọi nơi); ghép bằng `$sformat`; in bằng `%0s`.
 - `` `timescale 1ns/1ps `` đầu mỗi file `tb/`.
 - Comment, tên task/function/tín hiệu, chuỗi in và log chỉ dùng tiếng Anh.
 - Danh sách biên dịch: `sim/tb.f` liệt kê mọi file component theo nhóm nhánh (`// --- <b> ---`, như `rtl.f`), component trước, dòng cuối `../tb/${TB_NAME}.v` (mục 11).
@@ -21,45 +21,65 @@ Mục tiêu: testbench direct, tự kiểm, mô phỏng tất định, đọc đ
 Luồng dữ liệu:
 
 ```text
-tc/<ID>.v (sequence) ──task──> u_drv ──wire──> u_dut ──wire──> u_mon
-       │                                 ^                        │ samples s_* (inputs + outputs)
-       │                  u_clk_rst ─clk/rst_n─┴──> u_model <─────┤ inputs only
-       │                                               │ exp_*    │ outputs (actual)
-       └──task (headers)──> u_log <──task result── u_chk <────────┘
+tc/<ID>.v ──task (stimulus only)──> TB top sequence tasks ──> u_drv ──wire──> u_dut ──wire──> u_mon
+                                          │ u_chk.sync                   ^                        │ s_*, s_time,
+                                          │            u_clk_rst ─clk/rst_n/clk_cnt                │ s_done, s_wait, s_setup
+                                          │                              └──> u_model <────────────┤ inputs only
+                                          │                                     │ exp_*            │ outputs (actual)
+       tc ──task (headers, goal)──> u_log <──check/info── u_chk <───────────────┴──────────────────┘
+                                      ^
+                                      └──info── u_clk_rst ([RESET]), u_drv ([DRIVE], [WAIT], [TIMEOUT]), u_mon ([OBSERVE])
 ```
 
-| Vai trò | Instance | Module | Nhận | Lái / tạo ra |
-| --- | --- | --- | --- | --- |
-| Test sequence / controller | (khối `initial` của tc) | `tc/<ID>.v` | – | gọi task của `u_drv`, `u_clk_rst`, `u_chk` (`expect_*`), `u_log` (header) |
-| Clock/reset generator | `u_clk_rst` | `tb_<m>_clk_rst` | – | `clk`, `rst_n` (driver duy nhất) |
-| Protocol driver | `u_drv` | `tb_<m>_drv` | `clk`, output handshake của DUT nếu giao thức cần (vd. `pready`) | mọi input DUT trừ clock/reset (driver duy nhất) |
-| Monitor | `u_mon` | `tb_<m>_mon` | mọi chân DUT (input đã thực sự áp + output) | mẫu `s_*`, `s_vld`; giao dịch đã hoàn tất nếu cần (vd. `rd_data` cuối một lần đọc APB) |
-| Golden reference model | `u_model` | `tb_<m>_model` | `clk`, `rst_n`, mẫu **input** của monitor | `exp_*` |
-| Checker | `u_chk` | `tb_<m>_chk` | `exp_*` (model), mẫu output `s_*` (monitor) | gọi `u_log.result` |
-| Logger / result collector | `u_log` | `tb_<m>_log` | lời gọi `item`/`sub1`/`sub2`/`result`/`error_msg` | log; sở hữu `pass_count`, `fail_count` |
-| DUT | `u_dut` | `<m>` | input từ `u_drv`, `u_clk_rst` | output → `u_mon` (và handshake → `u_drv`) |
+| Vai trò | Instance | Module | Nhận | Lái / tạo ra | Log (qua `u_log`) |
+| --- | --- | --- | --- | --- | --- |
+| Test sequence / controller | (khối `initial` của tc) | `tc/<ID>.v` | – | gọi task sequence của TB top (chỉ stimulus), `reset_dut`, `u_log.item/sub1/sub2/goal` | header nhánh, một `[GOAL]` ngắn |
+| Clock/reset generator | `u_clk_rst` | `tb_<m>_clk_rst` | – | `clk`, `rst_n`, `clk_cnt` (số cạnh lên từ đầu mô phỏng, không bao giờ reset; driver duy nhất) | `[RESET]` lúc assert và lúc release |
+| Protocol driver | `u_drv` | `tb_<m>_drv` | `clk`, `clk_cnt`, handshake DUT nếu giao thức cần (vd. `pready`) | mọi input DUT trừ clock/reset | input ngoài bus khi thật sự đổi `[DRIVE] <sig>: cũ -> mới`, `[WAIT] n cycles` (khi chờ có nghĩa với kịch bản), `[TIMEOUT]`; không log từng pha bus |
+| Monitor | `u_mon` | `tb_<m>_mon` | `clk_cnt`, mọi chân DUT (input đã thực sự áp + output) | mẫu `s_*`, `s_vld`, thời điểm mẫu `s_time`; trạng thái giao dịch quan sát được (`s_done`, `s_wait`, `s_setup` = `clk` của pha setup) | `[OBSERVE] <output>: cũ -> mới` cho output có cạnh quan trọng (vd. ngắt) |
+| Golden reference model | `u_model` | `tb_<m>_model` | `clk`, `rst_n`, mẫu **input** của monitor | `exp_*`; tối đa một hàm trả tên quy tắc cho chú thích của dòng FAIL (vd. `err_text`) | không in gì |
+| Checker | `u_chk` | `tb_<m>_chk` | `exp_*` (model), mẫu output, `s_time` và trạng thái giao dịch (monitor) | quyết định PASS/FAIL, gọi `u_log.check` | mỗi giao dịch một dòng lúc hoàn tất, `[WATCH]` khi lệch, `[CHECK]` theo checkpoint; FAIL mang ngữ cảnh ngắn ngay trên cùng dòng |
+| Logger / result collector | `u_log` | `tb_<m>_log` | `clk_cnt` | định dạng thống nhất, sở hữu `pass_count`/`fail_count` | mọi dòng, `[SUMMARY]`, `Test_result` |
+| DUT | `u_dut` | `<m>` | input từ `u_drv`, `u_clk_rst` | output → `u_mon` (và handshake → `u_drv`) | – |
 
 Luật kết nối:
 
-- **Dữ liệu mức chân đi qua port/wire thật** khai báo ở phần 1 của TB top: driver → DUT, DUT → monitor, monitor → model, model + monitor → checker. Mỗi `wire` có đúng một nguồn lái (một output port); ghi nguồn bằng comment cạnh khai báo (`// u_drv`). Không component nào gán lên tín hiệu do component khác lái; không đọc tín hiệu nội bộ của DUT.
-- **Lời gọi mức giao dịch dùng task qua tên instance của TB top**: sequence → `u_drv.<task>`, `u_clk_rst.<task>`, `u_chk.expect_*`, `u_log.item/sub1/sub2`; checker → `tb_<m>.u_log.result`. Mỗi cặp chỉ một chiều gọi; ghi trong header của component.
-- **Model độc lập**: tính expected từ spec/vplan với clock, reset và input DUT mà monitor đã lấy mẫu. Không nhận output DUT, không chép cấu trúc RTL (viết theo câu chữ của spec: công thức, bảng trạng thái, mô hình thanh ghi). Nếu thời điểm một giao dịch chỉ biết qua handshake do DUT trả về và spec không định nghĩa độ trễ, model chỉ dùng tín hiệu đó để biết *khi nào*, không bao giờ làm giá trị expected; ghi lý do trong header model.
-- **Sở hữu biến**: mỗi `reg` có một process sở hữu rõ ràng; cờ handshake giữa hai process dùng cặp bộ đếm request/ack (mỗi process sở hữu một bộ đếm), không để hai process cùng gán một biến.
-- Component nhỏ, chỉ chứa đúng vai trò của nó; không cần cấu trúc 9 phần. Mỗi file có header comment: tên, vai trò, port nhận/lái, timing, ai gọi task nào, biến nào thuộc ai.
+- **Dữ liệu mức chân đi qua port/wire thật** khai báo ở phần 1 của TB top: driver → DUT, DUT → monitor, monitor → model, model + monitor → checker. Mỗi `wire` có đúng một nguồn lái (một output port); ghi nguồn bằng comment cạnh khai báo (`// u_drv`). Không component nào gán lên tín hiệu do component khác lái; không đọc tín hiệu nội bộ của DUT, không `force`/`deposit`.
+- **Lời gọi mức giao dịch dùng task qua tên instance của TB top**: sequence → task sequence của TB top → `u_drv.<task>` + `u_chk.sync`; `u_chk` → `u_model.err_text`; mọi component → `tb_<m>.u_log.info/check/error_msg` và hàm định dạng `tb_<m>.u_log.fmt_*`. Mỗi cặp chỉ một chiều gọi; ghi trong header của component.
+- **Mỗi thao tác được kể đúng một dòng, bởi component biết kết quả của nó**: giao dịch bus do checker kể lúc hoàn tất (addr, data, strb và kết quả trên cùng dòng), input ngoài bus do driver kể lúc áp, reset do `u_clk_rst`. Model tính âm thầm (không dòng diễn giải). Không log một thao tác chưa thực sự xảy ra (vd. "write applied" khi mới phát request hoặc transfer bị từ chối).
+- **Sở hữu biến**: mỗi `reg` có một process sở hữu rõ ràng; cờ handshake giữa hai process dùng cặp bộ đếm request/ack (mỗi process sở hữu một bộ đếm, vd. `sync_req`/`sync_ack`), không để hai process cùng gán một biến.
+- Component nhỏ, chỉ chứa đúng vai trò của nó; không cần cấu trúc 9 phần. Mỗi file có header comment: tên, vai trò, port nhận/lái, timing, log nào, ai gọi task nào, biến nào thuộc ai.
 - Mặc định mỗi vai trò một module. Không tạo module rỗng hay chỉ chuyển tiếp tín hiệu để đủ số: vai trò không có ở DUT thì bỏ (vd. DUT tổ hợp không clock/reset → không có `u_clk_rst`, monitor lấy mẫu theo một strobe do sequence tạo, ghi rõ trong header TB). DUT có nhiều giao thức độc lập (vd. APB + bus dữ liệu) → một driver/monitor cho mỗi giao thức (`tb_<m>_apb_drv`, `tb_<m>_apb_mon`…); vài input sideband đơn giản (vd. `dbg_mode`) do driver chính lái.
 
-### 2.1 Timing trong một chu kỳ
+### 2.1 Timing trong một chu kỳ và bộ đếm clock
+
+`clk_cnt` (do `u_clk_rst` lái) = số cạnh lên của clock kể từ thời điểm 0: khởi tạo 0 một lần ở đầu mô phỏng, +1 ở mỗi cạnh lên (gán nonblocking: process cùng thức dậy ở cạnh đó vẫn đọc giá trị cũ), **không bao giờ reset** – không bởi reset DUT, `init_test`, đổi Item/Sub item hay kịch bản mới. Đây không phải số chu kỳ kể từ khi bật counter. Mọi component dùng chung nguồn này.
 
 | Thời điểm | Việc |
 | --- | --- |
-| `posedge` | DUT và model cập nhật trạng thái (model dùng mẫu input của chu kỳ vừa kết thúc ở cạnh này) |
-| `posedge + #1` | driver đổi input DUT; `u_clk_rst` nhả reset; sequence in header nhánh |
-| `negedge` | monitor lấy mẫu mọi chân DUT (`s_vld = 1` từ cạnh xuống thật đầu tiên – lần `clk` X→0 ở thời điểm 0 không phải cạnh) |
-| `negedge + CHK_DLY` | checker so: check tự động (model vs DUT), rồi check VPLAN đang chờ; sau đó `expect_*` trả về |
+| `posedge` | DUT và model cập nhật trạng thái (model dùng mẫu input của chu kỳ vừa kết thúc ở cạnh này); `clk_cnt` + 1 |
+| `posedge + #1` | driver đổi input DUT (log `[DRIVE]`/`[WAIT]` với thời điểm này); `u_clk_rst` nhả reset |
+| `negedge` | monitor lấy mẫu mọi chân DUT, ghi `s_time = $time` (`s_vld = 1` từ cạnh xuống thật đầu tiên – lần `clk` X→0 ở thời điểm 0 không phải cạnh) |
+| `negedge + CHK_DLY` | checker so với model và log **với thời điểm mẫu `s_time`** (không phải lúc in); sau đó `u_chk.sync` trả về |
 
-- `CHK_DLY = 1` (parameter) < nửa chu kỳ: lúc đó mẫu monitor và output tổ hợp của model đã ổn định, stimulus chưa đổi. Không có race giữa model và checker.
-- Reset bất đồng bộ được phép tích cực giữa chu kỳ (`u_clk_rst.assert_reset`, thường ngay sau `posedge + #1`), không đúng tại `negedge`…`negedge + CHK_DLY`.
-- Header nhánh chỉ in tại `posedge + #1` (sau một task driver/reset) hoặc ngay sau khi `expect_*` trả về – không bao giờ trong khoảng checker đang so – để mọi check, kể cả check tự động, thuộc đúng nhánh đang mở.
+- `CHK_DLY = 1` (parameter) < nửa chu kỳ: lúc đó mẫu monitor và output tổ hợp của model đã ổn định, stimulus chưa đổi. Không có race giữa model và checker. Giữa `negedge` và lúc in không có cạnh lên, nên `clk` của dòng bằng `clk` lúc lấy mẫu.
+- Reset bất đồng bộ được phép tích cực giữa chu kỳ (thường ngay sau `negedge + CHK_DLY` hoặc `posedge + #1`), không đúng tại `negedge`…`negedge + CHK_DLY`.
+- **Mọi task sequence của TB top kết thúc bằng `u_chk.sync`** (trả về sau khi checker đã xử lý mẫu cuối của task). Vì vậy header nhánh in ngay sau một task sequence, hoặc trước stimulus đầu tiên, luôn đứng trước mọi check của nhánh đó.
+- Mỗi task chiếm trọn các chu kỳ của nó và trả về ở `negedge` của chu kỳ cuối; task kế tiếp lái ở `posedge + #1` ngay sau đó (giao dịch nối tiếp không có chu kỳ nghỉ chen vào). Một input ngoài bus (`set_dbg_mode(v)`) đổi ở điểm lái hợp lệ gần nhất sau thao tác trước, bus nghỉ trong chu kỳ đó.
+
+### 2.2 Nguồn expected: chỉ golden model
+
+- **Mọi expected dùng để kết luận PASS/FAIL do model tự viết, độc lập, theo spec tính ra.** Testcase không truyền giá trị expected nào; checker không có task nhận expected literal (không `expect_rdata(name, 32'h…)`, không `expect_count(…, 3'd3)`). Giá trị trong `Pass condition` của vplan không bao giờ là expected thay thế.
+- **Vplan quyết định chức năng cần test, phân nhóm Item/Sub item và kịch bản stimulus** (Test sequence: thanh ghi, data, strobe, số chu kỳ chờ, thời điểm đổi input). Bỏ cơ chế so literal VPLAN không làm bỏ testcase hay giảm phạm vi: mọi nhánh lá vẫn được hiện thực, mọi đại lượng `Pass condition` nêu vẫn được quan sát (qua giao dịch, watch từng mẫu hoặc checkpoint) – chỉ expected đổi nguồn.
+- **Pass condition dùng để soát model** khi viết TB: so `expected` trong log với số của vplan. Khác nhau → đối chiếu spec: model sai → sửa model; vplan sai → báo (S4), không chép số vplan vào TB để "cho qua".
+- Cần kiểm một thời điểm cụ thể → testcase chỉ **yêu cầu checkpoint** (đại lượng/giao dịch và thời điểm, vd. một lần đọc thanh ghi, hoặc `wait_cycles(n)` rồi `u_chk.checkpoint("<what>")` cho output không thuộc giao dịch); checker lấy expected tương ứng từ model tại đúng mẫu đó.
+- Hằng số reset, mask thanh ghi, công thức, latency… được phép có trong model khi có căn cứ ở spec (ghi nguồn trong header model).
+- **Model không đọc output DUT, không đọc trạng thái nội bộ DUT, không chép RTL** (viết theo câu chữ của spec: bảng thanh ghi, công thức, mô tả hành vi). Model cập nhật theo clock/reset và stimulus **thực tế đã áp** (mẫu input của monitor), không theo lời gọi task.
+- **Phân biệt request với giao dịch đã được chấp nhận**: model áp một lệnh ghi khi chính model dự đoán giao dịch hoàn tất và được chấp nhận theo spec (vd. chu kỳ access cuối, không lỗi) – không phải lúc driver phát request.
+- **Handshake**: nếu spec định nghĩa latency (vd. APB một wait state), model tự dự đoán handshake (`exp_pready`) và checker kiểm handshake thật của DUT riêng (timing, số wait cycle) – DUT trả handshake sai thì FAIL ở đúng chu kỳ đó. Nếu spec không định nghĩa latency, model chỉ dùng handshake thật để biết *khi nào*, và checker vẫn kiểm riêng tính hợp lệ của handshake theo giao thức (đúng pha, có giới hạn chờ `MAX_WAIT` → `[TIMEOUT]`); ghi lý do trong header model. Không để model "đi theo" lỗi DUT rồi vẫn PASS.
+- **Không đồng bộ lại model từ DUT**: giá trị DUT đọc sai không bao giờ được nạp lại vào model để che sai lệch – model giữ dự đoán của nó, các check sau tiếp tục so với dự đoán đó.
+- Spec thiếu thông tin để tính một expected → báo thiếu (đề xuất OPEN cho S1), không lấy số trong vplan để lấp; nhánh đó ghi rõ trong báo cáo.
+- So bằng `===`/`!==`: X/Z ở actual hoặc expected là FAIL.
 
 ## 3. TB top `tb/tb_<m>.v` – cấu trúc 9 phần, đúng thứ tự
 
@@ -73,22 +93,22 @@ Mỗi phần mở bằng header như sau, giữ đủ 9 header kể cả khi TB 
 
 | # | Header | Nội dung |
 | --- | --- | --- |
-| 1 | `Declaration` | `parameter CLK_PERIOD = 20;`, `RESET_CYCLES`, `TIMEOUT_NS`, `CHK_DLY`, `TIME_W`/`NAME_W`/`VAL_W`; mọi `wire` nối DUT và component (comment nguồn lái); biến các testcase dùng. Khai báo hết ở đây – file testcase không khai báo biến. |
+| 1 | `Declaration` | `parameter CLK_PERIOD = 20;`, `RESET_CYCLES`, `TIMEOUT_NS`, `CHK_DLY`, `MAX_WAIT` (nếu có handshake), cột log `TIME_W`/`CLK_W`/`TAG_W`/`VAL_W`; địa chỉ thanh ghi; mọi `wire` nối DUT và component (comment nguồn lái); biến các task sequence dùng. Khai báo hết ở đây – file testcase không khai báo biến. |
 | 2 | `DUT Instance` | `<m> u_dut (.port(net), ...);` nối theo tên, `#(.P(v))` nếu DUT có parameter. |
-| 3 | `Clock Generation` | Instance `u_clk_rst` (clock/reset generator). |
-| 4 | `Init Reset` | `task reset_dut`: driver về giá trị nghỉ ngay (`u_drv.drive_idle`), `u_clk_rst.apply_reset(RESET_CYCLES)`. Reset DUT và model (model theo `rst_n`); **không** đụng bộ đếm của logger. |
+| 3 | `Clock Generation` | Instance `u_clk_rst` (clock/reset generator, cả `clk_cnt`). |
+| 4 | `Init Reset` | `task reset_dut`: driver về giá trị nghỉ ngay (`u_drv.drive_idle`), `u_clk_rst.apply_reset(RESET_CYCLES)`, `u_chk.sync`. Reset DUT và model (model theo `rst_n`); **không** đụng bộ đếm của logger hay `clk_cnt`. Output trong lúc reset vẫn được watch so với model. |
 | 5 | `Golden Reference Model` | Instance `u_model`. |
 | 6 | `Checker` | Đường quan sát → kết quả: instance `u_mon`, `u_chk`, `u_log`. |
-| 7 | `Helper Functions` | `function` nhỏ của TB top thực sự dùng (thường trống; hàm căn cột ở trong logger). |
-| 8 | `Tasks` | Đường stimulus: instance `u_drv`; task sequence dùng chung cho nhiều testcase (gọi task driver, vd. `cfg_timer`); `init_test` (`u_log.init`, bật checker, đọc plusarg) và `end_test` (`u_log.summary`, `$finish`). |
-| 9 | `Main Program Body` | `` `include "run_test.v" `` (kịch bản của Item đang chạy) và `initial` timeout toàn cục (`u_log.error_msg("[TIMEOUT] …")`, `end_test`). |
+| 7 | `Helper Functions` | Hàm **trình bày** dùng chung cho log (vd. `reg_name(addr)`, `field_names(addr, mask)` theo register map) – không chứa logic kiểm. Trống nếu DUT không cần. |
+| 8 | `Tasks` | Đường stimulus: instance `u_drv`; **task sequence** cho testcase (chỉ stimulus, kết thúc bằng `u_chk.sync`: vd. `apb_write`, `apb_read`, `set_dbg_mode(v)`, `wait_cycles(n)`); `init_test(id, objective)` (`u_log.init`, các dòng `[TEST]`, plusarg) và `end_test` (`u_log.summary`, `$finish`). |
+| 9 | `Main Program Body` | `` `include "run_test.v" `` (kịch bản của Item đang chạy) và `initial` timeout toàn cục (`u_log.error_msg($time, "TIMEOUT", …)`, `end_test`). |
 
-Không viết code vô nghĩa để lấp một phần: phần không cần (thường là 7) chỉ giữ header.
+Không viết code vô nghĩa để lấp một phần: phần không cần chỉ giữ header.
 
 ## 4. Clock
 
-- Mặc định **20 ns**: `parameter CLK_PERIOD = 20;`, truyền vào `u_clk_rst`. Spec của DUT quy định chu kỳ/tần số khác → dùng giá trị của spec cho TB đó.
-- Trong `tb_<m>_clk_rst`: `clk_o` khởi tạo 0 trong `initial`, đảo bằng `always #(CLK_PERIOD / 2)` → cạnh lên đầu tiên ở `CLK_PERIOD/2`, không có cạnh lên ở thời điểm 0.
+- Mặc định **20 ns**: `parameter CLK_PERIOD = 20;`, truyền vào `u_clk_rst` (và dùng cho dòng `[TEST] Time`). Spec của DUT quy định chu kỳ/tần số khác → dùng giá trị của spec cho TB đó.
+- Trong `tb_<m>_clk_rst`: `clk_o` khởi tạo 0 trong `initial`, đảo bằng `always #(CLK_PERIOD / 2)` → cạnh lên đầu tiên ở `CLK_PERIOD/2`, không có cạnh lên ở thời điểm 0; `clk_cnt_o <= clk_cnt_o + 1` ở mỗi cạnh lên (khởi tạo 0 một lần, không bao giờ reset).
 
 ## 5. Thời điểm lái stimulus và lấy mẫu
 
@@ -102,910 +122,274 @@ din_o = 8'hA5;
 
 - Áp dụng cho mọi lần lái input DUT trong chuỗi stimulus (kể cả trả input về giá trị nghỉ, và reset khi reset là input đồng bộ). Không lái ở `negedge`, không lái đúng tại `posedge`, không lái ngay trước `posedge`, không thay `#1` bằng trễ khác.
 - `#1` chỉ thuộc testbench. Không bao giờ thêm trễ vào RTL, không sửa RTL để hợp với TB.
-- Biến nội bộ của TB (model, bộ đếm, tên case) không cần theo luật này.
+- Biến nội bộ của TB (model, bộ đếm, chuỗi log) không cần theo luật này.
 - Lấy mẫu output: monitor ở `negedge` (mục 2.1) – output thanh ghi đã cập nhật ở cạnh lên trước đó, output tổ hợp ứng với input đang giữ. Driver cần handshake (vd. `pready`) thì cũng đọc ở `negedge` trước khi quyết định chu kỳ tiếp theo.
+- Task giao dịch kết thúc ở `negedge` của chu kỳ cuối; lần gọi kế tiếp bắt đầu ở chu kỳ sau (back-to-back). Task không phải giao dịch (chờ, đổi sideband) đưa bus về nghỉ trong chu kỳ của nó.
 
 ## 6. Reset
 
 - Theo spec của DUT (cực tính, đồng bộ/không đồng bộ). Không sửa hành vi reset của RTL.
-- `reset_dut` khởi tạo rõ: mọi input DUT về giá trị nghỉ, reset tích cực, giữ `RESET_CYCLES` (mặc định 5) chu kỳ, rồi nhả. Model về trạng thái reset theo `rst_n` (reset bất đồng bộ: `always @(posedge clk_i or negedge rst_n_i)`).
-- Reset **không đồng bộ**: tích cực ngay khi gọi (giữ ngữ nghĩa async), nhả bằng `@(posedge clk); #1;`.
+- `reset_dut` khởi tạo rõ: mọi input DUT về giá trị nghỉ, reset tích cực, giữ `RESET_CYCLES` (mặc định 5; spec nêu khác thì theo spec) chu kỳ, rồi nhả. Model về trạng thái reset theo `rst_n` (reset bất đồng bộ: `always @(posedge clk_i or negedge rst_n_i)`). Output trong lúc reset vẫn được watch so với model ở mọi mẫu (chỉ in khi lệch).
+- Reset **không đồng bộ**: tích cực ngay khi gọi (giữ ngữ nghĩa async), nhả bằng `@(posedge clk); #1;`. Log `[RESET] sys_rst_n = 0 (asserted for N rising edges)` lúc tích cực và `[RESET] sys_rst_n = 1 (released)` lúc nhả. `clk_cnt` không bị reset.
 - Reset **đồng bộ**: cả tích cực và nhả đều theo `@(posedge clk); #1;`.
-- Testcase gọi `reset_dut` sau khi đã in header tới nhánh lá đầu tiên, để các check trong lúc reset thuộc nhánh đó. Reset giữa các nhánh con: gọi lại `reset_dut` (chỉ DUT/model); `init_test` (xóa bộ đếm) chỉ chạy một lần mỗi Item.
+- Testcase gọi `reset_dut` sau khi đã in header (và `[GOAL]`) tới nhánh lá đầu tiên, để các check trong lúc reset thuộc nhánh đó. Reset giữa các nhánh con: gọi lại `reset_dut` (chỉ DUT/model); `init_test` (xóa bộ đếm) chỉ chạy một lần mỗi Item.
 
-## 7. Self-check: model → checker → logger
+## 7. Self-check và log
 
-- Hai loại check, cả hai đi qua checker → `u_log.result`:
-  - **tự động**: mỗi mẫu hợp lệ của monitor, `exp_*` của model so với output DUT (`s_*`), khi checker đang bật (`u_chk.enable`). Tên case ghép từ input đã lấy mẫu (`rst_n_1_en_1_pulse_1_clr_0`).
-  - **theo VPLAN**: `u_chk.expect_<x>(name, value)` – giá trị số trong Pass condition của nhánh lá so với mẫu monitor kế tiếp; task trả về sau khi đã so.
-- Expected không bao giờ lấy từ output DUT (`expected = dut_out;` là sai).
-- So bằng `===`/`!==`: X/Z ở actual hoặc expected là FAIL.
-- `pass_count`, `fail_count` (`integer`) chỉ do logger sở hữu: `u_log.init` gán 0 (một lần mỗi Item, trong `init_test`), `u_log.result` tăng đúng một bộ đếm mỗi lần so, `u_log.error_msg` tăng `fail_count` cho lỗi không phải phép so (timeout, lỗi gọi header). PASS + FAIL = số dòng check + số `error_msg`.
+Mục tiêu: log **ngắn, cô đọng**, bắt đúng mốc – mỗi thao tác tác động DUT một dòng, mỗi kết quả kiểm có ý nghĩa một dòng – để người đọc thấy ngay stimulus và checkpoint sai đầu tiên, rồi khoanh vùng lỗi theo spec. Kiểm tra vẫn chạy đầy đủ (mọi mẫu, mọi giao dịch); chỉ phần in được giảm. Model tính mọi expected bên trong, không in diễn giải.
 
-### Định dạng log (chuẩn, `check_sim_log.py` và `sim/report.csh` đọc)
+### 7.1 Các loại check (đều so với model, đều in qua logger)
+
+| Dòng | Khi nào | Expected (model) | Actual (DUT qua monitor) | Đếm |
+| --- | --- | --- | --- | --- |
+| `[<PROTO> WRITE <REG>] addr data strb OK\|SLVERR` | mẫu hoàn tất giao dịch ghi, đáp ứng đúng như model dự đoán | cờ lỗi, số wait cycle | cờ lỗi, số wait cycle quan sát | không – `OK` chỉ nói transfer hoàn tất không báo lỗi; không phải bằng chứng thanh ghi lưu đúng, không phải data-check |
+| `[<PROTO> WRITE <REG>] addr data strb expected: <e> actual: <a> FAIL` | như trên, đáp ứng lệch (`OK`/`SLVERR` hoặc `N wait`) | – | – | 1 FAIL |
+| `[<PROTO> READ <REG>] addr expected: <e> actual: <a> PASS\|FAIL` | mẫu hoàn tất giao dịch đọc: dữ liệu + đáp ứng trên một dòng | giá trị thanh ghi theo model | dữ liệu đọc | 1 |
+| `[WATCH] <output> (<tình trạng bus>) expected: <e> actual: <a> FAIL` | mẫu lệch đầu tiên của một output ngoài mẫu hoàn tất (mọi output, mọi mẫu, kể cả lúc reset và lúc chờ) | `exp_*` | `s_*` | 1 FAIL mỗi đợt lệch; đóng bằng `[WATCH END]` (không đếm) |
+| `[CHECK] <output> <what> expected: <e> actual: <a> PASS\|FAIL` | `u_chk.checkpoint("<what>")` ngay sau một task sequence | `exp_*` của output đó | `s_*` | 1 |
+
+- **Watch không bỏ sót, không làm ngập log**: mọi mẫu đều được so; khớp thì không in gì; lệch lần đầu của một output → in ngay một dòng FAIL (thời điểm mẫu, tình trạng bus, expected, actual); các mẫu lệch tiếp theo của output đó chỉ đếm và được đóng bằng một dòng `[WATCH END]` (không đếm) khi khớp lại ("tim_pready: 3 mismatching sample(s) clk=a..b, matches the model again"). Lệch ở output khác, hoặc lệch mới sau khi đã khớp lại, in FAIL riêng. Không in PASS lặp theo chu kỳ.
+- `pass_count`, `fail_count` (`integer`) chỉ do logger sở hữu: `u_log.init` gán 0 (một lần mỗi Item, trong `init_test`), `u_log.check` tăng đúng một bộ đếm mỗi dòng kết thúc bằng `PASS`/`FAIL`, `u_log.error_msg` tăng `fail_count` cho lỗi không phải phép so (`TIMEOUT`, `PROTOCOL ERROR`, `LOG ERROR`). **PASS = số dòng kết thúc bằng `PASS`; FAIL = số dòng kết thúc bằng `FAIL` + số dòng lỗi.** Dòng sự kiện (`APB WRITE … OK`, `DRIVE`, `RESET`, `WAIT`, `OBSERVE`, `WATCH END`) không bao giờ được đếm. Ý nghĩa này kiểm chứng được bằng cách đếm dòng (parser làm vậy).
+
+### 7.2 Định dạng log (chuẩn, `check_sim_log.py` và `sim/report.csh` đọc)
 
 ```text
+[TEST] <ID>: <objective>                                             bối cảnh, vài dòng đầu log
+[TEST] DUT …, spec …
+[TEST] Time: t in ns; clk = rising edges since time 0, never reset; drive / sample points; APB line at completion
+[TEST] Checks: expected from the golden model; every sample compared, only deviations printed; meaning of OK
 [ITEM] <Item>
   [SUBITEM1] <Sub item 1>
+    [GOAL] <one short objective>
     [SUBITEM2] <Sub item 2>
-[<time>] <case> PASS | expected: <exp> | actual: <act>
-[<time>] <case> FAIL | expected: <exp> | actual: <act>
+<prefix> [<TAG>] <text>                                              dòng sự kiện (không đếm)
+<prefix> [<TAG>] <text> expected: <e> actual: <a> PASS|FAIL [(<note>)]   dòng check (đếm 1)
+<prefix> [TIMEOUT|PROTOCOL ERROR|LOG ERROR] <text>                   lỗi không phải phép so (đếm FAIL)
 [SUMMARY] PASS=<n> FAIL=<n>
 Test_result: PASSED|FAILED
+
+<prefix> = [t=<ns> ns clk=<n>]   vd. [t=     360 ns clk=    18]
 ```
 
-- Thứ tự: Item → Sub item 1 → Sub item 2 → các dòng check của nhánh lá đó. `[ITEM]` in một lần ở đầu log; `[SUBITEM1]` một lần khi bắt đầu nhóm, các `[SUBITEM2]` cùng cha nằm liên tiếp bên dưới; không in lại tên cha trước mỗi check.
-- Nhánh một hoặc hai cấp chỉ in các cấp thực sự tồn tại (Item một cấp: `[ITEM]` rồi các dòng check).
-- Đổi cha thì context con cũ bị xóa (logger: `item` xóa Sub item 1, `sub1` xóa Sub item 2); gọi `sub1` khi chưa có Item hay `sub2` khi chưa có Sub item 1 → logger in `[LOG ERROR] …` và tăng `fail_count`.
-- Tên in đúng nguyên văn ô vplan (tiếng Anh, không dịch, không thay bằng ID). Danh sách đúng: `python3 .claude/skills/rtl-s5-tb/scripts/check_sim_log.py --items doc/vplan/<m>_vplan.<ext>`. Thụt lề header 0/2/4 khoảng trắng chỉ để đọc; dòng check không thụt lề.
-- Mọi check nằm sau header của nhánh lá của nó – kể cả check tự động mỗi chu kỳ và check trong lúc reset/setup. Check nằm ở Item/Sub item 1 còn nhánh con, hoặc trước `[ITEM]`, là lỗi.
+- **Bối cảnh `[TEST]`** (từ `init_test`, mỗi log tự đủ dùng, vài dòng): ID và mục tiêu; DUT, phạm vi (chỉ port công khai), đường dẫn spec; quy ước thời gian/clock (mô tả một lần ở đây, không lặp trên từng dòng); nguồn expected và nghĩa của `OK`.
+- **Prefix** `[t=<ns> ns clk=<n>]`: thời điểm stimulus thật sự được áp (`posedge + 1`) hoặc output thật sự được lấy mẫu (`negedge`) – không phải lúc logger xử lý; `clk` = `clk_cnt` tại thời điểm đó (mục 2.1). Không pha, không transaction ID.
+- **Header nhánh**: thứ tự Item → Sub item 1 → Sub item 2 → dòng của nhánh lá đó. `[ITEM]` một lần ở đầu; `[SUBITEM1]` một lần khi bắt đầu nhóm, các `[SUBITEM2]` cùng cha liên tiếp bên dưới; không in lại tên cha, mục tiêu hay mô tả dài trên các dòng sau. Nhánh một/hai cấp chỉ in các cấp thực sự tồn tại. Đổi cha thì context con bị xóa; gọi `sub1` khi chưa có Item hay `sub2` khi chưa có Sub item 1 → `[LOG ERROR]`. Tên in đúng nguyên văn ô vplan (tiếng Anh, không dịch, không thay bằng ID; danh sách: `check_sim_log.py --items <vplan>`). Thụt lề 0/2/4 chỉ để đọc. **`[GOAL]`**: một dòng ngắn dưới header (`u_log.goal`), bằng lời của spec.
+- **Số dòng tối thiểu cho mỗi thao tác** (tag gợi ý, chọn theo giao thức nhưng ngắn và nhất quán):
+
+| Thao tác | Dòng | Phát bởi |
+| --- | --- | --- |
+| Ghi bus | `[APB WRITE TCR]   addr: 0x000 data: 0x00000103 strb: 0b0011 OK` – một dòng ở mẫu hoàn tất; thời điểm setup = `clk - 2` khi đúng một wait state (nêu một lần ở `[TEST] Time`); wait state/đáp ứng bất thường → dòng FAIL, chú thích nêu số wait và `clk` setup hoặc điều kiện lỗi của model | `u_chk` |
+| Đọc bus | `[APB READ TDR0]   addr: 0x004 expected:   3 counts actual:   3 counts PASS` – dữ liệu capture và kết quả trên một dòng, thời điểm = lúc lấy mẫu response | `u_chk` |
+| Input ngoài bus | `[DRIVE]           dbg_mode: 0 -> 1` – chỉ khi thật sự đổi, thời điểm áp | `u_drv` |
+| Reset | `[RESET]           sys_rst_n = 0 (asserted for 2 rising edges)` / `sys_rst_n = 1 (released)` | `u_clk_rst` |
+| Chờ có nghĩa với kịch bản | `[WAIT]            8 cycles, bus idle (clk=19..26)` – một dòng, không log từng chu kỳ | `u_drv` |
+| Output có cạnh quan trọng | `[OBSERVE]         tim_int: 0 -> 1` | `u_mon` |
+
+- **Không in**: REQUEST / SETUP / ACCESS / COMPLETE tách dòng cho cùng một transfer; READ RESPONSE rồi CHECK lặp cùng dữ liệu; dòng `MODEL`, lịch sử đếm, công thức, các bước cập nhật trạng thái, suy luận dài; PASS lặp theo chu kỳ; dòng chẩn đoán riêng; phỏng đoán nguyên nhân.
+- Với DUT cha (phạm vi tích hợp), tín hiệu nội bộ của module con (vd. `cnt_en`, `div_cnt`) chỉ tồn tại trong model, không bao giờ in như giá trị đo được; hành vi của chúng được kiểm qua output công khai (vd. đọc TDR) so với model.
+- `Test_result: PASSED` khi FAIL = 0 và PASS > 0, ngược lại `FAILED`; in ngay sau `[SUMMARY]` (`sim/report.csh` lấy từ thứ ba của dòng này). Không dòng nào khác chứa chữ `Test_result`. Không cần `[FIRST FAIL]`: dòng FAIL đầu tiên đã hiện rõ dưới header nhánh của nó.
 - Mỗi testcase chạy thành một log riêng `sim/log/<ID>.log` (transcript QuestaSim, mỗi dòng có tiền tố `# `).
 
-### Căn cột
+### 7.3 Radix theo ý nghĩa dữ liệu
 
-Mọi dòng check trong một log thẳng cột, dù tên case hay width giá trị khác nhau:
+| Đại lượng | Định dạng | Hàm logger |
+| --- | --- | --- |
+| Địa chỉ, dữ liệu thanh ghi thô, cấu hình, mask, giá trị cần thấy vị trí bit/field | hex, tiền tố `0x`, đủ độ rộng, chữ số hoa (`0x01C`, `0x00000203`) | `fmt_hex(v, w)` |
+| Byte strobe, nhóm bit điều khiển cần thấy từng bit | binary, tiền tố `0b` (`0b0011`) | `fmt_bin(v, w)` |
+| Số đếm, số chu kỳ, độ dài, số lượng, toán hạng/kết quả số học | decimal, kèm đơn vị (`5 counts`, `8 cycles`) | `fmt_cnt(v, w)` / `fmt_dec(v, w)` / `fmt_sdec(v, w)` (có dấu) |
+| Tín hiệu điều khiển một bit | `0`/`1` kèm tên (`dbg_mode: 0 -> 1`) | `fmt_bit(v)` |
+
+- Dòng giao dịch ghi `addr`/`data` bằng hex để đối chiếu register map; dòng **kiểm chức năng** trình bày theo ý nghĩa: TDR là thanh ghi nhưng khi kiểm chức năng đếm in decimal (`expected: 5 counts actual: 5 counts`); thanh ghi cấu hình/trạng thái in hex (`expected: 0x00000003 actual: 0x00000003`). Không in cả hex lẫn decimal cho cùng một số đếm nếu không giúp chẩn đoán; không bắt người đọc tự đổi hex sang decimal.
+- Expected và actual của cùng một check cùng radix, đơn vị và cách hiểu signed/unsigned; số có dấu in đúng dấu theo spec (`fmt_sdec`), số đếm unsigned không bao giờ in âm.
+- Giữ đủ độ rộng, kể cả counter 64-bit (`fmt_*` nhận `[63:0]` + độ rộng; không qua `integer` 32-bit).
+- Actual có X/Z → FAIL, và in raw (`X/Z 0x0000000x`) khi decimal không biểu diễn được, không bao giờ một số decimal có vẻ hợp lệ.
+- Radix chỉ đổi cách trình bày, không đổi độ rộng hay phép so (`===` trên giá trị gốc). Không chuyển mọi giá trị qua một hàm in hex cố định.
+
+### 7.4 Ngữ cảnh của một FAIL
+
+Dòng check đã mang chức năng (tag + nhánh), thời điểm và `clk`, expected (model), actual (DUT); thao tác dẫn tới nằm ở các dòng ngay trên. Một sai lệch luôn chỉ **một dòng**: khi expected/actual chưa đủ để thấy sai gì, checker thêm chú thích ngắn trong ngoặc sau `FAIL` – không có dòng chẩn đoán riêng.
+
+| FAIL | Chú thích | Ví dụ |
+| --- | --- | --- |
+| Đọc số đếm (TDR) | không – expected/actual decimal đã cho thấy chênh lệch | `expected:   3 counts actual:   6 counts FAIL` |
+| Đọc thanh ghi (hex) | field khác nhau | `expected: 0x00000003 actual: 0x00000001 FAIL (differ: HALT_ACK)` |
+| Đáp ứng lệnh ghi | số wait so với model và `clk` setup, hoặc điều kiện lỗi model dự đoán | `expected: SLVERR actual: OK FAIL (tim_pslverr 0, model: TCR error condition 1, DIV_VAL > 8)` |
+| Watch | tình trạng bus của mẫu, đặt trong text trước `expected:` | `[WATCH] tim_pready (access cycle 2 of APB WRITE TCR, setup clk=3) expected: 1 actual: 0 FAIL` |
+| X/Z | không – actual in raw | `actual: X/Z 0x0000000x FAIL` |
+
+- Không in lịch sử model, phân tích dài hay nguyên nhân phỏng đoán; output top không bao giờ đủ để khẳng định module/tín hiệu nội bộ nào hỏng. Timeout là dòng `[TIMEOUT]` riêng (có `clk` của pha setup).
+- Cần hiểu sâu hơn một FAIL → xem waveform (`make wave`) hoặc tạm thêm `$display` khi gỡ lỗi, không để lại trong TB.
+
+### 7.5 Căn cột
 
 | Cột | Căn | Độ rộng (parameter của logger, truyền từ phần 1) |
 | --- | --- | --- |
-| `<time>` trong `[ ]` | phải | `TIME_W` chữ số (mặc định 8, đủ tới 99 999 999 ns) |
-| `<case>` | trái, đệm khoảng trắng | `NAME_W` ký tự (mặc định 40; chọn ≥ tên case dài nhất của TB) |
-| `PASS` / `FAIL` | – | 4 ký tự (cố định) |
-| `<exp>`, `<act>` | phải | `VAL_W` chữ số hex = số chữ số `%h` của tín hiệu rộng nhất được so (vd. 64 bit → 16) |
+| `t=` trong prefix | phải | `TIME_W` (mặc định 8) |
+| `clk=` | phải | `CLK_W` (mặc định 6) |
+| `[<TAG>]` | trái, đệm khoảng trắng | `TAG_W` (mặc định 17, ≥ tag dài nhất thường gặp, vd. `[APB WRITE THCSR]`; tag dài hơn không bị cắt, chỉ dòng đó lệch) |
+| `<e>`, `<a>` của dòng đọc | phải | `VAL_W` (mặc định 10, vd. `0x00000203`, `  3 counts`); dòng watch/checkpoint không đệm |
 
-- Hiện thực trong logger: task `result` và 3 hàm `str_len`, `pad_left`, `pad_right` (chuỗi `reg [8*64-1:0]`) – Verilog-2005 thuần, không dùng `%-40s`/`%8d` (độ rộng trường là mở rộng SystemVerilog).
-- Checker tạo chuỗi giá trị bằng `$sformat(s, "%h", v)` (đủ chữ số theo width) rồi gọi `u_log.result`; không component nào tự `$display` dòng check.
-- Tên case dài hơn `NAME_W` không bị cắt, chỉ dòng đó lệch – tăng `NAME_W` thay vì rút tên.
-- Header `[ITEM]`/`[SUBITEM1]`/`[SUBITEM2]`, `[SUMMARY]`, `Test_result` không đệm cột.
-
-Các trường:
-
-- `[<time>]`: thời gian mô phỏng hiện tại, `$time` theo ns, căn phải `TIME_W` chữ số (`[      61]`).
-- `<case>`: tên ngắn, không khoảng trắng, mô tả **đặc điểm input quan trọng** của case – `addr_0_wdata_A5A5A5A5`, `valid_1_ready_0`, `clr_1_en_1_pulse_1`. Không dùng tên vô nghĩa kiểu `CASE_001`, `TEST_01`. Ghép động bằng `$sformat`.
-- `PASS`/`FAIL`: quyết định của checker. `expected`: model (check tự động) hoặc giá trị VPLAN (check theo VPLAN). `actual`: DUT qua monitor. In bằng `%h`, căn phải `VAL_W` chữ số.
-- Dấu phân cách giữ nguyên `| expected: ... | actual: ...`.
-- `[SUMMARY] PASS=<pass_count> FAIL=<fail_count>` in một lần cuối mô phỏng (`u_log.summary` trong `end_test`).
-- `Test_result: PASSED` khi FAIL = 0 và PASS > 0, ngược lại `Test_result: FAILED`; in ngay sau `[SUMMARY]`. `sim/report.csh` lấy từ thứ ba của dòng này làm kết quả.
+- Hiện thực trong logger: hàm `prefix`, `str_len`, `pad_left`, `pad_right` (chuỗi `reg [8*80-1:0]`) – Verilog-2005 thuần, không `%-40s`/`%8d` (độ rộng trường là mở rộng SystemVerilog). Mọi dòng chỉ in qua logger (`info`, `check`, `error_msg`); không component nào tự `$display`.
+- Header, `[GOAL]`, `[TEST]`, `[SUMMARY]`, `Test_result` không đệm cột.
 
 ## 8. Testcase: một file mỗi Item
 
 - `tc/<ID>.v` với `<ID>` = ID Item `TC_<M>_<NNN>` – ID thực thi dùng cho tên file, `make TESTNAME=<ID>`, `sim/pat.list`, `sim/log/<ID>.log`. Không tạo file riêng cho Sub item 1/Sub item 2 hay từng dòng vplan. Nhánh con truy vết bằng đường dẫn `<ID> › <Item> › <Sub item 1> › <Sub item 2>` (cùng tên lá dưới cha khác nhau được phân biệt bằng cha).
-- Header comment: ID, tên Item, mục tiêu, cây nhánh con của Item theo vplan.
-- Đúng **một** khối `initial` (luồng điều phối chính), thụt 2 khoảng trắng (nằm bên trong module TB): `init_test` → `u_log.item("<Item>")` → các nhóm nhánh → `end_test`. `init_test` và `end_test` chạy một lần cho cả Item.
-- Mỗi Sub item 1 / Sub item 2 là một khối có tên `begin : <snake_case_name> ... end` theo cây vplan, theo đúng thứ tự vplan, mỗi cụm cùng cha liên tiếp. Lệnh đầu tiên của khối là header của nó (`u_log.sub1(...)`/`u_log.sub2(...)`), trước mọi lệnh tốn thời gian; khối chỉ chứa stimulus và check của nhánh đó.
-- Kịch bản chỉ mô tả stimulus và giá trị VPLAN: gọi task của driver, clock/reset generator, `u_chk.expect_*`, header logger. Driver, monitor, model, checker và tiện ích nằm trong môi trường TB (`tb/`); không khai báo biến, không viết lại model/checker trong tc.
+- Header comment: ID, tên Item, mục tiêu, cây nhánh con của Item theo vplan, ghi chú "no expected value here".
+- Đúng **một** khối `initial` (luồng điều phối chính), thụt 2 khoảng trắng (nằm bên trong module TB): `init_test("<ID>", "<objective>")` → `u_log.item("<Item>")` (+ `u_log.goal`) → các nhóm nhánh → `end_test`. `init_test` và `end_test` chạy một lần cho cả Item.
+- Mỗi Sub item 1 / Sub item 2 là một khối có tên `begin : <name> ... end` theo cây vplan, theo đúng thứ tự vplan, mỗi cụm cùng cha liên tiếp. Lệnh đầu tiên của khối là header của nó (`u_log.sub1(...)`/`u_log.sub2(...)`), tiếp theo là một dòng `u_log.goal(...)` ngắn, trước mọi lệnh tốn thời gian; khối chỉ chứa stimulus của nhánh đó.
+- Kịch bản **chỉ mô tả stimulus** theo Test sequence của vplan: gọi task sequence của TB top (`apb_write(addr, data, strb)`, `apb_read(addr)`, `set_dbg_mode(v)`, `wait_cycles(n)`, `u_chk.checkpoint("<what>")` khi cần), `reset_dut`, header/goal của logger. Input ngoài bus đổi ở điểm lái hợp lệ gần nhất sau thao tác trước; không chèn chờ/quan sát mà kịch bản không cần. Literal trong tc chỉ là stimulus (địa chỉ, data, strobe, số chu kỳ) và chữ mô tả – **không giá trị expected nào**. Không khai báo biến, không viết lại model/checker trong tc.
 - Không chọn test bằng `+TEST`; test được chọn bằng `make TESTNAME=<ID>`.
 
 ## 9. Chọn test, timeout, waveform, dữ liệu file
 
 - Chọn test bằng file: `make -C sim all TESTNAME=<ID>` chép `tc/<ID>.v` thành `sim/run_test.v`, biên dịch (`compile.f` → `rtl.f`, `tb.f`), chạy. Chạy cả danh sách: `cd sim && ./run.csh` (đọc `pat.list`), tổng hợp: `./report.csh`.
-- Timeout toàn cục (vd. 100× số chu kỳ ước lượng) trong `initial` riêng ở phần 9: `u_log.error_msg("[TIMEOUT] ...")` rồi `end_test`.
+- Timeout toàn cục (vd. 100× số chu kỳ ước lượng) trong `initial` riêng ở phần 9: `u_log.error_msg($time, "TIMEOUT", "simulation exceeded … ns")` rồi `end_test`. Handshake có giới hạn chờ riêng trong driver (`MAX_WAIT` → `[TIMEOUT]` nêu giao dịch và `clk` setup, giao dịch bị bỏ, bus về nghỉ).
 - Waveform: `make run` ghi mọi tín hiệu (`log -r /*`) vào `sim/vsim.wlf`; `make wave` mở trong QuestaSim. TB không cần `$dumpfile`/`$dumpvars`.
-- Dữ liệu từ file (khi vplan/spec dùng vector ngoài): input `doc/database/input/<m>_<tên>.txt`, tham chiếu `doc/database/output/<m>_<tên>.txt`. `init_test` đọc `+IN=`/`+OUT=`; mặc định là đường dẫn tương đối từ `sim/` (`"../doc/database/input/<m>_<tên>.txt"`), biến chuỗi `reg [8*256-1:0]`. Driver đọc vector input, model hoặc checker đọc vector tham chiếu. Đổi cặp file: `make all TESTNAME=<ID> DATA_IN=<file> DATA_OUT=<file>`. Script sinh dữ liệu: `sim/script/<m>_gen_vectors.py` (`make gen_data`). Không đặt dữ liệu hay script trong `tb/`, `tc/`.
+- Dữ liệu từ file (khi vplan/spec dùng vector ngoài): input `doc/database/input/<m>_<tên>.txt`, tham chiếu `doc/database/output/<m>_<tên>.txt`. `init_test` đọc `+IN=`/`+OUT=`; mặc định là đường dẫn tương đối từ `sim/` (`"../doc/database/input/<m>_<tên>.txt"`), biến chuỗi `reg [8*256-1:0]`. Driver đọc vector input; vector tham chiếu chỉ được dùng khi nó là đầu ra của một model tham chiếu độc lập (vd. script Python viết theo spec, `sim/script/<m>_gen_vectors.py`), được model hoặc checker đọc như một phần của golden model – ghi nguồn trong header. Đổi cặp file: `make all TESTNAME=<ID> DATA_IN=<file> DATA_OUT=<file>`. Script sinh dữ liệu: `make gen_data`. Không đặt dữ liệu hay script trong `tb/`, `tc/`.
 
-## 10. Khung mẫu (DUT `pulse_cnt` 3 bit: `clr_i` → 0, `en_i & pulse_i` → +1)
+## 10. Khung mẫu đã chạy thật: `cnt_ctrl` kiểm qua `timer_top`
 
-Đã biên dịch và chạy qua `sim/Makefile` mẫu với QuestaSim 2021 (`Errors: 0, Warnings: 0`, 3 Item `PASSED`, `check_sim_log.py` `TẤT CẢ PASS`).
-
-Vplan (`doc/vplan/pulse_cnt_vplan.md`, cây theo `--items`):
+Thư mục `references/example_timer_top/` (đọc trực tiếp các file khi viết TB mới):
 
 ```text
-TC_PULSE_CNT_001  [ITEM] Counting
-                    [SUBITEM1] Enable control   [SUBITEM2] Count step | Hold value check
-                    [SUBITEM1] Clear control    [SUBITEM2] Clear to zero | Clear priority | Hold value check
-TC_PULSE_CNT_002  [ITEM] Boundary
-                    [SUBITEM1] Wrap from max | Clear at max
-TC_PULSE_CNT_003  [ITEM] Reset during counting
+tb/tb_timer_top.v           TB top 9 phần: helper trình bày (reg_name, field_names), task sequence
+                            (apb_write, apb_read, set_dbg_mode, wait_cycles), init_test, end_test
+tb/tb_timer_top_clk_rst.v   clk, rst_n, clk_cnt (không reset); [RESET]
+tb/tb_timer_top_drv.v       APB master + dbg_mode; [DRIVE], [WAIT], [TIMEOUT]; MAX_WAIT
+tb/tb_timer_top_mon.v       mẫu negedge, s_time, s_done / s_wait / s_setup; [OBSERVE] tim_int
+tb/tb_timer_top_model.v     model từ spec, không in gì; err_text cho chú thích FAIL
+tb/tb_timer_top_chk.v       một dòng mỗi giao dịch, watch (chỉ in khi lệch, WATCH END), checkpoint, sync
+tb/tb_timer_top_log.v       prefix [t= ns clk=], info / check / error_msg / goal / banner,
+                            fmt_hex / fmt_bin / fmt_dec / fmt_cnt / fmt_sdec / fmt_bit
+tc/TC_TIMER_TOP_006.v       cnt_ctrl_chk: Timer enable, Divider setting, TDR write while counting
+tc/TC_TIMER_TOP_012.v       cnt_halt_chk: halt / resume theo HALT_REQ và theo dbg_mode, TDR write while halted
+log/TC_TIMER_TOP_006.log    log PASS thật (62 dòng, PASS=22 FAIL=0)
+log/TC_TIMER_TOP_012.log    log PASS thật (48 dòng, PASS=14 FAIL=0)
+log/TC_TIMER_TOP_012_mutant_halt_ignored.log   log FAIL thật, RTL cố ý gây lỗi (xem 10.3)
 ```
 
-`sim/tb.f`:
+Kiểm chứng (2026-11-05): QuestaSim 2021 qua `sim/Makefile` (`make all TESTNAME=<ID>`) trên một bản sao scratch của project (rtl/ thật của Timer_IP, `sim/` env, `tb.f` chỉ gồm các file trên): biên dịch `Errors: 0, Warnings: 0`; `check_sim_log.py … doc/vplan/timer_top_vplan.md --partial` → `TẤT CẢ PASS`; `report.csh` → PASSED (mutant: FAILED). File log chỉ giữ phần TB in (bỏ tiền tố `# ` và dòng của QuestaSim).
 
-```text
-// Testbench file list, paths relative to sim/. Lines containing // are comments.
-// Component modules tb/tb_<m>_<role>.v of every testbench, grouped by branch
-// like rtl.f ("// --- <b> ---" + one file per line, S5 adds them), then the
-// testbench top of the selected test (TB_NAME is exported by the Makefile).
-// Example:
-// --- my_module ---
-// ../tb/tb_my_module_drv.v
+Hai nhánh đầu của `TC_TIMER_TOP_012` là **kịch bản minh họa của skill** cho halt/resume (thao tác và checkpoint rõ ràng), khác Test sequence của `doc/vplan/timer_top_vplan.md` và đổi `dbg_mode` khi TIM_EN = 1 – ngoài giả định môi trường OPEN-001 (`dbg_mode` đồng bộ, lái ở `posedge + #1`; hành vi vẫn xác định bởi `halted = dbg_mode & HALT_REQ` của spec). TB của project vẫn theo Test sequence của vplan.
 
-// --- pulse_cnt ---
-../tb/tb_pulse_cnt_clk_rst.v
-../tb/tb_pulse_cnt_drv.v
-../tb/tb_pulse_cnt_mon.v
-../tb/tb_pulse_cnt_model.v
-../tb/tb_pulse_cnt_chk.v
-../tb/tb_pulse_cnt_log.v
+DUT nhỏ không có bus: giữ nguyên vai trò; driver log `[DRIVE] <sig>: cũ -> mới` mỗi lần đổi input, checker dùng watch + `checkpoint` (không có dòng giao dịch).
 
-../tb/${TB_NAME}.v
-```
-
-`tb/tb_pulse_cnt.v`:
+### 10.1 Testcase: chỉ stimulus, checkpoint đủ phân biệt
 
 ```verilog
-// ============================================================================
-// Testbench : tb_pulse_cnt - self-checking direct testbench of pulse_cnt
-// Vplan     : doc/vplan/pulse_cnt_vplan.md
-// Test cases: tc/TC_PULSE_CNT_<NNN>.v, one per VPLAN Item, copied to
-//             sim/run_test.v by "make build" and included in section 9
-// Components (tb/, listed in sim/tb.f before this file):
-//   u_clk_rst tb_pulse_cnt_clk_rst clock/reset generator -> clk, rst_n
-//   u_drv     tb_pulse_cnt_drv     driver                -> en, pulse, clr
-//   u_mon     tb_pulse_cnt_mon     monitor               -> s_* samples
-//   u_model   tb_pulse_cnt_model   golden reference model-> exp_count
-//   u_chk     tb_pulse_cnt_chk     checker               -> u_log.result
-//   u_log     tb_pulse_cnt_log     logger, owns pass_count / fail_count
-// Dataflow  : tc -> u_drv -> u_dut -> u_mon -> u_model -> u_chk -> u_log
-//                                     u_mon --------------> u_chk
-// ============================================================================
-`timescale 1ns/1ps
-
-module tb_pulse_cnt;
-
-  // ============================================================
-  // 1. Declaration
-  // ============================================================
-  parameter CLK_PERIOD   = 20;
-  parameter RESET_CYCLES = 5;
-  parameter TIMEOUT_NS   = 100000;
-  // Checker sample point: falling edge + CHK_DLY
-  parameter CHK_DLY      = 1;
-  // Log columns: time digits, case-name width, value digits (widest %h)
-  parameter TIME_W       = 8;
-  parameter NAME_W       = 40;
-  parameter VAL_W        = 1;
-
-  wire            clk;         // u_clk_rst
-  wire            rst_n;       // u_clk_rst
-  wire            en;          // u_drv
-  wire            pulse;       // u_drv
-  wire            clr;         // u_drv
-  wire [2:0]      count;       // u_dut
-  wire            s_rst_n;     // u_mon
-  wire            s_en;        // u_mon
-  wire            s_pulse;     // u_mon
-  wire            s_clr;       // u_mon
-  wire [2:0]      s_count;     // u_mon
-  wire            s_vld;       // u_mon
-  wire [2:0]      exp_count;   // u_model
-  reg  [8*64-1:0] msg;
-
-  // ============================================================
-  // 2. DUT Instance
-  // ============================================================
-  pulse_cnt u_dut (
-    .clk_i   (clk),
-    .rst_n_i (rst_n),
-    .en_i    (en),
-    .pulse_i (pulse),
-    .clr_i   (clr),
-    .count_o (count)
-  );
-
-  // ============================================================
-  // 3. Clock Generation
-  // ============================================================
-  tb_pulse_cnt_clk_rst #(
-    .CLK_PERIOD (CLK_PERIOD)
-  ) u_clk_rst (
-    .clk_o   (clk),
-    .rst_n_o (rst_n)
-  );
-
-  // ============================================================
-  // 4. Init Reset
-  // ============================================================
-  // DUT and model reset (model follows rst_n); log counters are kept
-  task reset_dut;
-    begin
-      u_drv.drive_idle;
-      u_clk_rst.apply_reset(RESET_CYCLES);
+    begin : halt_in_debug_mode
+      u_log.sub1("Halt in debug mode");
+      u_log.goal("DIV_VAL 1 (1 step / 2 cycles): dbg_mode = 1 alone does not halt; HALT_REQ = 1 halts (TDR0 and divider phase held); HALT_REQ = 0 resumes");
+      reset_dut;
+      apb_write(ADDR_TCR,   32'h0000_0103, 4'b0011);     // DIV_VAL = 1, DIV_EN = 1, TIM_EN = 1
+      apb_read(ADDR_TDR0);                               // counting
+      set_dbg_mode(1'b1);                                // HALT_REQ = 0: no halt yet
+      apb_write(ADDR_THCSR, 32'h0000_0001, 4'b0001);     // HALT_REQ = 1: halt starts
+      apb_read(ADDR_THCSR);                              // HALT_REQ, HALT_ACK
+      apb_read(ADDR_TDR0);                               // held
+      wait_cycles(8);
+      apb_read(ADDR_TDR0);                               // still held
+      apb_write(ADDR_THCSR, 32'h0000_0000, 4'b0001);     // HALT_REQ = 0: resume
+      apb_read(ADDR_THCSR);
+      apb_read(ADDR_TDR0);                               // counting again, same divider phase
     end
-  endtask
-
-  // ============================================================
-  // 5. Golden Reference Model
-  // ============================================================
-  tb_pulse_cnt_model u_model (
-    .clk_i       (clk),
-    .rst_n_i     (rst_n),
-    .s_en_i      (s_en),
-    .s_pulse_i   (s_pulse),
-    .s_clr_i     (s_clr),
-    .exp_count_o (exp_count)
-  );
-
-  // ============================================================
-  // 6. Checker
-  // ============================================================
-  // Monitor -> checker (with model) -> logger
-  tb_pulse_cnt_mon u_mon (
-    .clk_i     (clk),
-    .rst_n_i   (rst_n),
-    .en_i      (en),
-    .pulse_i   (pulse),
-    .clr_i     (clr),
-    .count_i   (count),
-    .s_rst_n_o (s_rst_n),
-    .s_en_o    (s_en),
-    .s_pulse_o (s_pulse),
-    .s_clr_o   (s_clr),
-    .s_count_o (s_count),
-    .s_vld_o   (s_vld)
-  );
-
-  tb_pulse_cnt_chk #(
-    .CHK_DLY (CHK_DLY)
-  ) u_chk (
-    .clk_i       (clk),
-    .s_rst_n_i   (s_rst_n),
-    .s_en_i      (s_en),
-    .s_pulse_i   (s_pulse),
-    .s_clr_i     (s_clr),
-    .s_count_i   (s_count),
-    .s_vld_i     (s_vld),
-    .exp_count_i (exp_count)
-  );
-
-  tb_pulse_cnt_log #(
-    .TIME_W (TIME_W),
-    .NAME_W (NAME_W),
-    .VAL_W  (VAL_W)
-  ) u_log ();
-
-  // ============================================================
-  // 7. Helper Functions
-  // ============================================================
-
-  // ============================================================
-  // 8. Tasks
-  // ============================================================
-  // Stimulus driver, called by the test case
-  tb_pulse_cnt_drv u_drv (
-    .clk_i   (clk),
-    .en_o    (en),
-    .pulse_o (pulse),
-    .clr_o   (clr)
-  );
-
-  // Once per Item, before its first header
-  task init_test;
-    begin
-      u_log.init;
-      u_chk.enable(1'b1);
-    end
-  endtask
-
-  // Once per Item: summary, Test_result, end of simulation
-  task end_test;
-    begin
-      u_log.summary;
-      $finish;
-    end
-  endtask
-
-  // ============================================================
-  // 9. Main Program Body
-  // ============================================================
-  // Test sequence of the selected Item (tc/<ID>.v)
-`include "run_test.v"
-
-  initial begin
-    #(TIMEOUT_NS);
-    $sformat(msg, "[TIMEOUT] simulation exceeded %0d ns", TIMEOUT_NS);
-    u_log.error_msg(msg);
-    end_test;
-  end
-
-endmodule
 ```
 
-`tb/tb_pulse_cnt_clk_rst.v`:
+- THCSR kiểm cơ chế yêu cầu/xác nhận halt (HALT_REQ, HALT_ACK); TDR0 kiểm hành vi đếm thực tế. Mọi giá trị TDR0 (trước halt, trong halt, sau resume) so với model.
+- Hai lần đọc TDR0 trong halt cách nhau một khoảng giữ (`wait_cycles(8)`) phân biệt "đã dừng" với "vẫn đếm"; lần đọc sau resume phân biệt "đã đếm tiếp" với "vẫn dừng". Không mặc định TDR0 lúc halt bằng lần đọc trước: lần đọc trước = 1 count (clk 8), giá trị bị giữ = 3 counts vì các chu kỳ của lệnh đọc, của lần đổi `dbg_mode` và của lệnh ghi THCSR vẫn đếm.
+- `set_dbg_mode` trước lệnh ghi HALT_REQ làm số chu kỳ chạy trước halt lẻ (7: clk 6..12), nên halt giữ divider ở vị trí 1 của 2; sau resume bước đầu tiên đến sau 1 chu kỳ: 6 counts ở clk 38 (divider bị đặt lại khi halt thì chỉ 5) – checkpoint này kiểm cả việc giữ pha divider.
+- Nhánh `Halt without debug mode` làm ngược lại: HALT_REQ = 1 trước (không halt), `dbg_mode` 0 → 1 halt, `dbg_mode` 1 → 0 nhả trong khi HALT_REQ vẫn 1 (THCSR = `0x00000001`, TDR0 đếm tiếp). Hai nhánh cùng phủ bốn tổ hợp `dbg_mode`/HALT_REQ mà không thêm thao tác thừa.
+
+Task sequence của TB top (phần 8) – stimulus rồi đồng bộ với checker, không expected:
 
 ```verilog
-// ============================================================================
-// Component : tb_pulse_cnt_clk_rst - clock/reset generator of tb_pulse_cnt
-// Drives    : clk_o, rst_n_o (only driver of both nets)
-// Timing    : first rising edge at CLK_PERIOD / 2; rst_n_o is the active-low
-//             asynchronous reset of the spec: asserted immediately, released
-//             at posedge + #1
-// Called by : tb_pulse_cnt (reset_dut) and the test case
-// ============================================================================
-`timescale 1ns/1ps
-
-module tb_pulse_cnt_clk_rst #(
-  parameter CLK_PERIOD = 20
-) (
-  output reg clk_o,
-  output reg rst_n_o
-);
-
-  initial begin
-    clk_o   = 1'b0;
-    rst_n_o = 1'b0;
-  end
-
-  always #(CLK_PERIOD / 2) clk_o = ~clk_o;
-
-  // Asynchronous assertion, effective now
-  task assert_reset;
+  task set_dbg_mode;
+    input v;
     begin
-      rst_n_o = 1'b0;
+      u_drv.set_dbg_mode(v);   // posedge + #1 of the next cycle, [DRIVE] only on a real change
+      u_chk.sync;
     end
   endtask
-
-  // Release at the next posedge + #1
-  task release_reset;
-    begin
-      @(posedge clk_o);
-      #1;
-      rst_n_o = 1'b1;
-    end
-  endtask
-
-  // Assert now, hold n rising edges, release at posedge + #1
-  task apply_reset;
-    input integer n;
-    begin
-      rst_n_o = 1'b0;
-      repeat (n) begin
-        @(posedge clk_o);
-      end
-      #1;
-      rst_n_o = 1'b1;
-    end
-  endtask
-
-endmodule
 ```
 
-`tb/tb_pulse_cnt_drv.v`:
+Checker ở mẫu hoàn tất của lệnh đọc (trích `tb_timer_top_chk.v`): expected từ `exp_*`, dữ liệu và đáp ứng trên một dòng, thời điểm là lúc lấy mẫu:
 
 ```verilog
-// ============================================================================
-// Component : tb_pulse_cnt_drv - stimulus driver of tb_pulse_cnt
-// Drives    : en_o, pulse_o, clr_o -> DUT inputs (only driver of these nets)
-// Timing    : every change at posedge + #1; values hold until the next call
-// Called by : the test case (sequence) and reset_dut
-// ============================================================================
-`timescale 1ns/1ps
-
-module tb_pulse_cnt_drv (
-  input  wire clk_i,
-  output reg  en_o,
-  output reg  pulse_o,
-  output reg  clr_o
-);
-
-  // Idle values without waiting for an edge (reset only)
-  task drive_idle;
-    begin
-      en_o    = 1'b0;
-      pulse_o = 1'b0;
-      clr_o   = 1'b0;
-    end
-  endtask
-
-  // Inputs of one clock cycle, applied at posedge + #1
-  task cycle;
-    input d_en;
-    input d_pulse;
-    input d_clr;
-    begin
-      @(posedge clk_i);
-      #1;
-      en_o    = d_en;
-      pulse_o = d_pulse;
-      clr_o   = d_clr;
-    end
-  endtask
-
-  // n idle cycles
-  task idle;
-    input integer n;
-    integer k;
-    begin
-      for (k = 0; k < n; k = k + 1) begin
-        cycle(1'b0, 1'b0, 1'b0);
-      end
-    end
-  endtask
-
-endmodule
-```
-
-`tb/tb_pulse_cnt_mon.v`:
-
-```verilog
-// ============================================================================
-// Component : tb_pulse_cnt_mon - monitor of tb_pulse_cnt
-// Observes  : every DUT pin (inputs as really applied, outputs as produced)
-// Drives    : s_*_o samples -> u_model (inputs), u_chk (inputs and outputs)
-// Timing    : samples at every falling edge, half a cycle after the stimulus
-//             of posedge + #1 and after the outputs have settled; the X->0
-//             initialization of clk at time 0 is not an edge (s_vld_o = 0)
-// ============================================================================
-`timescale 1ns/1ps
-
-module tb_pulse_cnt_mon (
-  input  wire       clk_i,
-  input  wire       rst_n_i,
-  input  wire       en_i,
-  input  wire       pulse_i,
-  input  wire       clr_i,
-  input  wire [2:0] count_i,
-  output reg        s_rst_n_o,
-  output reg        s_en_o,
-  output reg        s_pulse_o,
-  output reg        s_clr_o,
-  output reg  [2:0] s_count_o,
-  output reg        s_vld_o
-);
-
-  initial begin
-    s_vld_o = 1'b0;
-  end
-
-  always @(negedge clk_i) begin
-    if ($time > 0) begin
-      s_vld_o   <= 1'b1;
-      s_rst_n_o <= rst_n_i;
-      s_en_o    <= en_i;
-      s_pulse_o <= pulse_i;
-      s_clr_o   <= clr_i;
-      s_count_o <= count_i;
-    end
-  end
-
-endmodule
-```
-
-`tb/tb_pulse_cnt_model.v`:
-
-```verilog
-// ============================================================================
-// Component : tb_pulse_cnt_model - golden reference model of pulse_cnt
-// Inputs    : clk, asynchronous reset, DUT inputs as sampled by u_mon
-//             (never a DUT output)
-// Drives    : exp_count_o -> u_chk
-// Behavior  : from the spec: reset -> 0; clr_i = 1 -> 0 (priority);
-//             en_i = 1 and pulse_i = 1 -> count + 1 modulo 8. The state
-//             moves at the rising edge with the inputs the monitor sampled
-//             in the cycle that ends at that edge.
-// ============================================================================
-`timescale 1ns/1ps
-
-module tb_pulse_cnt_model (
-  input  wire       clk_i,
-  input  wire       rst_n_i,
-  input  wire       s_en_i,
-  input  wire       s_pulse_i,
-  input  wire       s_clr_i,
-  output reg  [2:0] exp_count_o
-);
-
-  integer next_val;
-
-  always @(posedge clk_i or negedge rst_n_i) begin
-    if (!rst_n_i) begin
-      exp_count_o <= 3'd0;
-    end
-    else begin
-      next_val = exp_count_o;
-      if (s_clr_i) begin
-        next_val = 0;
-      end
-      else if (s_en_i && s_pulse_i) begin
-        next_val = (next_val + 1) % 8;
-      end
-      exp_count_o <= next_val;
-    end
-  end
-
-endmodule
-```
-
-`tb/tb_pulse_cnt_chk.v`:
-
-```verilog
-// ============================================================================
-// Component : tb_pulse_cnt_chk - checker of tb_pulse_cnt
-// Inputs    : expected value from u_model, actual value and sampled inputs
-//             from u_mon
-// Results   : every comparison goes to tb_pulse_cnt.u_log.result
-// Timing    : compares each valid monitor sample at falling edge + CHK_DLY
-//             (sample and model output stable; stimulus only changes at
-//             posedge + #1)
-//   - automatic check: every cycle while enabled (model vs DUT)
-//   - directed check : expect_count compares a VPLAN value with the next
-//                      sample and returns after the comparison
-// Ownership : auto_en (enable), dir_req/dir_name/dir_exp (expect_count),
-//             dir_ack (compare process)
-// ============================================================================
-`timescale 1ns/1ps
-
-module tb_pulse_cnt_chk #(
-  parameter CHK_DLY = 1
-) (
-  input  wire       clk_i,
-  input  wire       s_rst_n_i,
-  input  wire       s_en_i,
-  input  wire       s_pulse_i,
-  input  wire       s_clr_i,
-  input  wire [2:0] s_count_i,
-  input  wire       s_vld_i,
-  input  wire [2:0] exp_count_i
-);
-
-  reg             auto_en;
-  integer         dir_req;
-  integer         dir_ack;
-  reg  [2:0]      dir_exp;
-  reg  [8*64-1:0] dir_name;
-  reg  [8*64-1:0] auto_name;
-  reg  [8*64-1:0] exp_s;
-  reg  [8*64-1:0] act_s;
-
-  initial begin
-    auto_en = 1'b0;
-    dir_req = 0;
-    dir_ack = 0;
-  end
-
-  // Turn the automatic per-cycle check on or off
-  task enable;
-    input on;
-    begin
-      auto_en = on;
-    end
-  endtask
-
-  // Directed check of a VPLAN value against the next monitor sample
-  task expect_count;
-    input [8*64-1:0] name;
-    input [2:0]      exp;
-    begin
-      dir_name = name;
-      dir_exp  = exp;
-      dir_req  = dir_req + 1;
-      wait (dir_ack == dir_req);
-    end
-  endtask
-
-  // === comparison: X/Z in actual or expected is a FAIL
-  task compare;
-    input [8*64-1:0] name;
-    input [2:0]      exp;
-    input [2:0]      act;
-    begin
-      $sformat(exp_s, "%h", exp);
-      $sformat(act_s, "%h", act);
-      tb_pulse_cnt.u_log.result(name, (act === exp), exp_s, act_s);
-    end
-  endtask
-
-  always @(negedge clk_i) begin
-    #(CHK_DLY);
-    if (auto_en && s_vld_i) begin
-      $sformat(auto_name, "rst_n_%b_en_%b_pulse_%b_clr_%b",
-               s_rst_n_i, s_en_i, s_pulse_i, s_clr_i);
-      compare(auto_name, exp_count_i, s_count_i);
-    end
-    if (s_vld_i && dir_ack != dir_req) begin
-      compare(dir_name, dir_exp, s_count_i);
-      dir_ack = dir_req;
-    end
-  end
-
-endmodule
-```
-
-`tb/tb_pulse_cnt_log.v`:
-
-```verilog
-// ============================================================================
-// Component : tb_pulse_cnt_log - logger / result collector of tb_pulse_cnt
-// Owns      : pass_count, fail_count (only this module changes them)
-// Called by : test case (item / sub1 / sub2 headers), u_chk (result),
-//             tb_pulse_cnt (init, error_msg, summary)
-// Log       : [ITEM] / [SUBITEM1] / [SUBITEM2] headers, aligned check lines,
-//             [SUMMARY] and Test_result (check_sim_log.py, sim/report.csh)
-// ============================================================================
-`timescale 1ns/1ps
-
-module tb_pulse_cnt_log #(
-  parameter TIME_W = 8,
-  parameter NAME_W = 40,
-  parameter VAL_W  = 1
-);
-
-  integer         pass_count;
-  integer         fail_count;
-  reg  [8*64-1:0] cur_item;
-  reg  [8*64-1:0] cur_sub1;
-
-  // Once per Item (init_test); a DUT reset does not call it
-  task init;
-    begin
-      pass_count = 0;
-      fail_count = 0;
-      cur_item   = 0;
-      cur_sub1   = 0;
-    end
-  endtask
-
-  // Branch headers; a new parent clears the context of its children
-  task item;
-    input [8*64-1:0] name;
-    begin
-      cur_item = name;
-      cur_sub1 = 0;
-      $display("[ITEM] %0s", name);
-    end
-  endtask
-
-  task sub1;
-    input [8*64-1:0] name;
-    begin
-      if (cur_item == 0) begin
-        error_msg("[LOG ERROR] [SUBITEM1] without [ITEM]");
-      end
-      cur_sub1 = name;
-      $display("  [SUBITEM1] %0s", name);
-    end
-  endtask
-
-  task sub2;
-    input [8*64-1:0] name;
-    begin
-      if (cur_sub1 == 0) begin
-        error_msg("[LOG ERROR] [SUBITEM2] without [SUBITEM1]");
-      end
-      $display("    [SUBITEM2] %0s", name);
-    end
-  endtask
-
-  // One aligned check line: [time] case PASS|FAIL | expected: exp | actual: act
-  task result;
-    input [8*64-1:0] name;
-    input            pass;
-    input [8*64-1:0] exp_str;
-    input [8*64-1:0] act_str;
-    reg   [8*64-1:0] t_str;
-    begin
-      if (pass) begin
-        pass_count = pass_count + 1;
-      end
-      else begin
-        fail_count = fail_count + 1;
-      end
-      $sformat(t_str, "%0d", $time);
-      $display("[%0s] %0s %0s | expected: %0s | actual: %0s",
-               pad_left(t_str, TIME_W), pad_right(name, NAME_W),
-               pass ? "PASS" : "FAIL",
-               pad_left(exp_str, VAL_W), pad_left(act_str, VAL_W));
-    end
-  endtask
-
-  // Failure without a comparison (timeout, logging error)
-  task error_msg;
-    input [8*64-1:0] msg;
-    begin
-      fail_count = fail_count + 1;
-      $display("%0s", msg);
-    end
-  endtask
-
-  // Summary and overall result (read by sim/report.csh)
-  task summary;
-    begin
-      $display("[SUMMARY] PASS=%0d FAIL=%0d", pass_count, fail_count);
-      if (fail_count == 0 && pass_count > 0) begin
-        $display("Test_result: PASSED");
-      end
-      else begin
-        $display("Test_result: FAILED");
-      end
-    end
-  endtask
-
-  // Number of characters of a string held in reg [8*64-1:0]
-  function integer str_len;
-    input [8*64-1:0] s;
-    integer          k;
-    begin
-      str_len = 0;
-      for (k = 0; k < 64; k = k + 1) begin
-        if (s[8*k +: 8] != 8'h0) begin
-          str_len = k + 1;
+        if (is_cnt) begin                       // TDR0 / TDR1: a count -> decimal
+          es = tb_timer_top.u_log.fmt_cnt(exp_prdata_i, 32);
+          as = tb_timer_top.u_log.fmt_cnt(s_prdata_i, 32);
         end
-      end
-    end
-  endfunction
-
-  // s right-aligned in a field of w characters
-  function [8*64-1:0] pad_left;
-    input [8*64-1:0] s;
-    input integer    w;
-    integer          k;
-    begin
-      pad_left = s;
-      for (k = str_len(s); k < w; k = k + 1) begin
-        pad_left[8*k +: 8] = " ";
-      end
-    end
-  endfunction
-
-  // s left-aligned in a field of w characters
-  function [8*64-1:0] pad_right;
-    input [8*64-1:0] s;
-    input integer    w;
-    integer          k;
-    begin
-      pad_right = s;
-      for (k = str_len(s); k < w; k = k + 1) begin
-        pad_right = {pad_right[8*63-1:0], 8'h20};
-      end
-    end
-  endfunction
-
-endmodule
+        else begin                              // configuration / status -> hex
+          es = tb_timer_top.u_log.fmt_hex(exp_prdata_i, 32);
+          as = tb_timer_top.u_log.fmt_hex(s_prdata_i, 32);
+        end
+        dat_ok = (s_prdata_i === exp_prdata_i);
+        tb_timer_top.u_log.check(s_time_i, tag, txt, dat_ok && rsp_ok, es, as, tb_timer_top.VAL_W);
 ```
 
-`tc/TC_PULSE_CNT_001.v` (Item ba cấp; `Hold value check` dưới hai cha khác nhau):
-
-```verilog
-// ============================================================================
-// TC_PULSE_CNT_001 - Counting
-// Objective: count enable, hold and clear behavior (VPLAN Item "Counting")
-//   Enable control > Count step, Hold value check
-//   Clear control  > Clear to zero, Clear priority, Hold value check
-// Copied to sim/run_test.v and included inside tb_pulse_cnt.
-// ============================================================================
-  initial begin
-    init_test;
-    u_log.item("Counting");
-    begin : enable_control
-      u_log.sub1("Enable control");
-      begin : count_step
-        u_log.sub2("Count step");
-        reset_dut;
-        u_drv.cycle(1'b1, 1'b1, 1'b0);
-        u_drv.cycle(1'b1, 1'b1, 1'b0);
-        u_drv.cycle(1'b1, 1'b1, 1'b0);
-        u_drv.idle(1);
-        u_chk.expect_count("after_3_pulses", 3'd3);
-      end
-      begin : hold_value_check
-        u_log.sub2("Hold value check");
-        u_drv.cycle(1'b0, 1'b1, 1'b0);
-        u_drv.cycle(1'b1, 1'b0, 1'b0);
-        u_drv.idle(1);
-        u_chk.expect_count("en_0_or_pulse_0_hold_3", 3'd3);
-      end
-    end
-    begin : clear_control
-      u_log.sub1("Clear control");
-      begin : clear_to_zero
-        u_log.sub2("Clear to zero");
-        u_drv.cycle(1'b0, 1'b0, 1'b1);
-        u_drv.idle(1);
-        u_chk.expect_count("clr_1_from_3", 3'd0);
-      end
-      begin : clear_priority
-        u_log.sub2("Clear priority");
-        u_drv.cycle(1'b1, 1'b1, 1'b0);
-        u_drv.cycle(1'b1, 1'b1, 1'b1);
-        u_drv.idle(1);
-        u_chk.expect_count("clr_1_en_1_pulse_1", 3'd0);
-      end
-      begin : hold_value_check
-        u_log.sub2("Hold value check");
-        u_drv.idle(2);
-        u_chk.expect_count("idle_after_clear", 3'd0);
-      end
-    end
-    end_test;
-  end
-```
-
-`tc/TC_PULSE_CNT_002.v` (Item hai cấp; reset DUT/model giữa hai nhánh, bộ đếm giữ nguyên):
-
-```verilog
-// ============================================================================
-// TC_PULSE_CNT_002 - Boundary
-// Objective: wrap from 7 to 0 and clear at the maximum value
-//   Wrap from max, Clear at max (two levels)
-// Copied to sim/run_test.v and included inside tb_pulse_cnt.
-// ============================================================================
-  initial begin
-    init_test;
-    u_log.item("Boundary");
-    begin : wrap_from_max
-      u_log.sub1("Wrap from max");
-      reset_dut;
-      repeat (7) begin
-        u_drv.cycle(1'b1, 1'b1, 1'b0);
-      end
-      u_drv.idle(1);
-      u_chk.expect_count("after_7_pulses", 3'd7);
-      u_drv.cycle(1'b1, 1'b1, 1'b0);
-      u_drv.idle(1);
-      u_chk.expect_count("pulse_at_7_wraps", 3'd0);
-    end
-    begin : clear_at_max
-      u_log.sub1("Clear at max");
-      reset_dut;
-      repeat (7) begin
-        u_drv.cycle(1'b1, 1'b1, 1'b0);
-      end
-      u_drv.cycle(1'b1, 1'b1, 1'b1);
-      u_drv.idle(1);
-      u_chk.expect_count("clr_1_at_7", 3'd0);
-    end
-    end_test;
-  end
-```
-
-`tc/TC_PULSE_CNT_003.v` (Item một cấp; reset bất đồng bộ giữa lúc đếm):
-
-```verilog
-// ============================================================================
-// TC_PULSE_CNT_003 - Reset during counting
-// Objective: asynchronous reset clears the count while counting (one level)
-// Copied to sim/run_test.v and included inside tb_pulse_cnt.
-// ============================================================================
-  initial begin
-    init_test;
-    u_log.item("Reset during counting");
-    reset_dut;
-    u_drv.cycle(1'b1, 1'b1, 1'b0);
-    u_drv.cycle(1'b1, 1'b1, 1'b0);
-    u_clk_rst.assert_reset;
-    u_chk.expect_count("rst_n_0_en_1_pulse_1", 3'd0);
-    u_clk_rst.release_reset;
-    u_drv.idle(1);
-    u_chk.expect_count("first_pulse_after_release", 3'd1);
-    end_test;
-  end
-```
-
-`sim/log/TC_PULSE_CNT_001.log` (bỏ tiền tố `# ` và các dòng của QuestaSim):
+### 10.2 Log PASS (`TC_TIMER_TOP_012 › Halt in debug mode`)
 
 ```text
-[ITEM] Counting
-  [SUBITEM1] Enable control
-    [SUBITEM2] Count step
-[      21] rst_n_0_en_0_pulse_0_clr_0               PASS | expected: 0 | actual: 0
-[      41] rst_n_0_en_0_pulse_0_clr_0               PASS | expected: 0 | actual: 0
-[      61] rst_n_0_en_0_pulse_0_clr_0               PASS | expected: 0 | actual: 0
-[      81] rst_n_0_en_0_pulse_0_clr_0               PASS | expected: 0 | actual: 0
-[     101] rst_n_1_en_0_pulse_0_clr_0               PASS | expected: 0 | actual: 0
-[     121] rst_n_1_en_1_pulse_1_clr_0               PASS | expected: 0 | actual: 0
-[     141] rst_n_1_en_1_pulse_1_clr_0               PASS | expected: 1 | actual: 1
-[     161] rst_n_1_en_1_pulse_1_clr_0               PASS | expected: 2 | actual: 2
-[     181] rst_n_1_en_0_pulse_0_clr_0               PASS | expected: 3 | actual: 3
-[     181] after_3_pulses                           PASS | expected: 3 | actual: 3
-    [SUBITEM2] Hold value check
-[     201] rst_n_1_en_0_pulse_1_clr_0               PASS | expected: 3 | actual: 3
-[     221] rst_n_1_en_1_pulse_0_clr_0               PASS | expected: 3 | actual: 3
-[     241] rst_n_1_en_0_pulse_0_clr_0               PASS | expected: 3 | actual: 3
-[     241] en_0_or_pulse_0_hold_3                   PASS | expected: 3 | actual: 3
-  [SUBITEM1] Clear control
-    [SUBITEM2] Clear to zero
-[     261] rst_n_1_en_0_pulse_0_clr_1               PASS | expected: 3 | actual: 3
-[     281] rst_n_1_en_0_pulse_0_clr_0               PASS | expected: 0 | actual: 0
-[     281] clr_1_from_3                             PASS | expected: 0 | actual: 0
-    [SUBITEM2] Clear priority
-[     301] rst_n_1_en_1_pulse_1_clr_0               PASS | expected: 0 | actual: 0
-[     321] rst_n_1_en_1_pulse_1_clr_1               PASS | expected: 1 | actual: 1
-[     341] rst_n_1_en_0_pulse_0_clr_0               PASS | expected: 0 | actual: 0
-[     341] clr_1_en_1_pulse_1                       PASS | expected: 0 | actual: 0
-    [SUBITEM2] Hold value check
-[     361] rst_n_1_en_0_pulse_0_clr_0               PASS | expected: 0 | actual: 0
-[     381] rst_n_1_en_0_pulse_0_clr_0               PASS | expected: 0 | actual: 0
-[     381] idle_after_clear                         PASS | expected: 0 | actual: 0
-[SUMMARY] PASS=24 FAIL=0
-Test_result: PASSED
+[TEST] Time: t in ns; clk = sys_clk rising edges since time 0 (20 ns period, never reset); inputs applied at rising edge + 1 ns, outputs sampled at the falling edge; APB line at completion, setup at clk - 2
+[TEST] Checks: expected from the golden model tb_timer_top_model; outputs compared at every falling edge, only deviations printed; APB WRITE ... OK = no error response (not a data check)
+[ITEM] cnt_halt_chk
+  [SUBITEM1] Halt in debug mode
+    [GOAL] DIV_VAL 1 (1 step / 2 cycles): dbg_mode = 1 alone does not halt; HALT_REQ = 1 halts (TDR0 and divider phase held); HALT_REQ = 0 resumes
+[t=       0 ns clk=     0] [RESET]           sys_rst_n = 0 (asserted for 2 rising edges)
+[t=      31 ns clk=     2] [RESET]           sys_rst_n = 1 (released)
+[t=     100 ns clk=     5] [APB WRITE TCR]   addr: 0x000 data: 0x00000103 strb: 0b0011 OK
+[t=     160 ns clk=     8] [APB READ TDR0]   addr: 0x004 expected:   1 counts actual:   1 counts PASS
+[t=     171 ns clk=     9] [DRIVE]           dbg_mode: 0 -> 1
+[t=     240 ns clk=    12] [APB WRITE THCSR] addr: 0x01C data: 0x00000001 strb: 0b0001 OK
+[t=     300 ns clk=    15] [APB READ THCSR]  addr: 0x01C expected: 0x00000003 actual: 0x00000003 PASS
+[t=     360 ns clk=    18] [APB READ TDR0]   addr: 0x004 expected:   3 counts actual:   3 counts PASS
+[t=     371 ns clk=    19] [WAIT]            8 cycles, bus idle (clk=19..26)
+[t=     580 ns clk=    29] [APB READ TDR0]   addr: 0x004 expected:   3 counts actual:   3 counts PASS
+[t=     640 ns clk=    32] [APB WRITE THCSR] addr: 0x01C data: 0x00000000 strb: 0b0001 OK
+[t=     700 ns clk=    35] [APB READ THCSR]  addr: 0x01C expected: 0x00000000 actual: 0x00000000 PASS
+[t=     760 ns clk=    38] [APB READ TDR0]   addr: 0x004 expected:   6 counts actual:   6 counts PASS
+  [SUBITEM1] Halt without debug mode
+    [GOAL] DIV_EN 0 (1 step / cycle): HALT_REQ = 1 then dbg_mode = 1 halts; dbg_mode = 0 with HALT_REQ = 1 kept: HALT_ACK 0, counting resumes
+[t=     761 ns clk=    38] [DRIVE]           dbg_mode: 1 -> 0
+[t=     761 ns clk=    38] [RESET]           sys_rst_n = 0 (asserted for 2 rising edges)
+[t=     791 ns clk=    40] [RESET]           sys_rst_n = 1 (released)
+```
+
+`clk` tiếp tục tăng qua reset DUT (38 → 40 → …). Divider 2^8 (`TC_TIMER_TOP_006 › Divider setting`, phần C) – một dòng cho 253 chu kỳ chờ, mọi mẫu vẫn được watch:
+
+```text
+[t=    1680 ns clk=    84] [APB WRITE TCR]   addr: 0x000 data: 0x00000803 strb: 0b0011 OK
+[t=    1691 ns clk=    85] [WAIT]            253 cycles, bus idle (clk=85..337)
+[t=    6800 ns clk=   340] [APB READ TDR0]   addr: 0x004 expected:   0 counts actual:   0 counts PASS
+[t=    6860 ns clk=   343] [APB READ TDR0]   addr: 0x004 expected:   1 counts actual:   1 counts PASS
+```
+
+### 10.3 Log FAIL (mutant: halt không chặn đếm)
+
+Cùng TB, bản sao `cnt_ctrl.v` trong scratch bị sửa để halt không còn chặn đếm (`div_cnt_run = div_cnt_wrap`, `cnt_en = tim_en & div_tick`; `halt_ack` giữ đúng) – chỉ để minh họa, không phải lỗi của project:
+
+```text
+[t=     240 ns clk=    12] [APB WRITE THCSR] addr: 0x01C data: 0x00000001 strb: 0b0001 OK
+[t=     300 ns clk=    15] [APB READ THCSR]  addr: 0x01C expected: 0x00000003 actual: 0x00000003 PASS
+[t=     360 ns clk=    18] [APB READ TDR0]   addr: 0x004 expected:   3 counts actual:   6 counts FAIL
+[t=     371 ns clk=    19] [WAIT]            8 cycles, bus idle (clk=19..26)
+[t=     580 ns clk=    29] [APB READ TDR0]   addr: 0x004 expected:   3 counts actual:  11 counts FAIL
+...
+[SUMMARY] PASS=7 FAIL=7
+Test_result: FAILED
+```
+
+Đọc được ngay: thao tác kích thích (cấu hình, `dbg_mode` 0 → 1 ở clk 9, HALT_REQ = 1 hoàn tất ở clk 12), cơ chế halt đúng (THCSR PASS), checkpoint sai đầu tiên (TDR0 trong halt ở clk 18: 6 thay vì 3) và lần đọc sau một khoảng giữ cho thấy counter vẫn đếm (11). Model không bị nạp lại từ DUT: các lần đọc sau tiếp tục so với dự đoán của model.
+
+Hai mutant khác cho các dạng còn lại – `tim_pready` không lên cho lệnh ghi (watch + timeout), và HALT_ACK luôn 0 (đọc thanh ghi, chú thích field):
+
+```text
+[t=     100 ns clk=     5] [WATCH]           tim_pready (access cycle 2 of APB WRITE TCR, setup clk=3) expected: 1 actual: 0 FAIL
+[t=     120 ns clk=     6] [WATCH END]       tim_pready: 1 mismatching sample(s) clk=5..5, matches the model again
+[t=     240 ns clk=    12] [TIMEOUT]         APB WRITE TCR: no tim_pready = 1 in 9 access cycles (setup clk=3); transfer abandoned, bus idle
+
+[t=     300 ns clk=    15] [APB READ THCSR]  addr: 0x01C expected: 0x00000003 actual: 0x00000001 FAIL (differ: HALT_ACK)
 ```
 
 ## 11. Môi trường `sim/` (dùng chung cho mọi module)

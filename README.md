@@ -51,6 +51,7 @@ Diagram là sơ đồ logic SVG đen trắng (MUX, register/FF, gate, ellipse op
 │   └── rtl-s5-tb/                # S5 (tùy chọn): testbench self-checking
 │       ├── tb_coding_rules/      # (tùy chọn) rule testbench của bạn
 │       ├── references/default_tb_rules.md
+│       ├── references/example_timer_top/  # khung mẫu đã chạy thật: cnt_ctrl kiểm qua timer_top (tb/, tc/, log/)
 │       ├── references/sim_env/   # mẫu sim/: Makefile, compile.f, rtl.f, tb.f, pat.list, run.csh, report.csh, schematic.tcl, cov_excl.tcl
 │       └── scripts/check_preconditions.py, check_sim_log.py
 ├── memory_bank/session_template.md   # mẫu session summary để khôi phục ngữ cảnh (protocol trong ~/.claude/CLAUDE.md)
@@ -83,7 +84,7 @@ Công cụ: Python 3 (bắt buộc). Compile check RTL ở S3 (`make -C sim lint
 | `/rtl-s2-diagram <m> --from a,b --to x,y [--part p]` | Thêm góc nhìn `<m>_<part>.svg` chỉ chứa logic từ tín hiệu `a,b` tới `x,y` (S3 không đọc). |
 | `/rtl-s3-rtl <m>` | RTL Verilog-2005 (`rtl/<m>.v`) theo spec + diagram, bỏ comment dòng của nó trong `sim/rtl.f`, compile/lint sạch qua `make -C sim lint TOP=<m>`. |
 | `/rtl-s4-vplan <m>` | (tùy chọn) Vplan direct test tối thiểu, dạng cây Item → Sub item 1 → Sub item 2 theo chức năng của DUT (ô cha gộp: bảng HTML `rowspan` / merge cell; mỗi Item cấp cao nhất = một ID `TC_<M>_<NNN>` = một testcase S5). |
-| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005: TB top `tb/tb_<m>.v` (9 phần) + component `tb/tb_<m>_<role>.v` nối bằng port thật (clock/reset generator, driver, monitor, golden model, checker, logger), clock 20 ns, stimulus tại `posedge` + `#1`; mỗi Item vplan một file `tc/<ID>.v` chạy mọi nhánh con của Item; cập nhật `sim/rtl.f`, `sim/tb.f`, `sim/pat.list` (mặc định chỉ mở testcase của nhánh hiện tại, nhóm khác ở dạng `//TC_…`), log phân cấp `[ITEM]`/`[SUBITEM1]`/`[SUBITEM2]` + dòng check căn thẳng cột, mô phỏng bằng QuestaSim (`make -C sim all TESTNAME=<ID>`) nếu có. |
+| `/rtl-s5-tb <m>` | (tùy chọn) Testbench self-checking Verilog-2005: TB top `tb/tb_<m>.v` (9 phần) + component `tb/tb_<m>_<role>.v` nối bằng port thật (clock/reset generator, driver, monitor, golden model, checker, logger), clock 20 ns, stimulus tại `posedge` + `#1`; mỗi Item vplan một file `tc/<ID>.v` chạy mọi nhánh con của Item; cập nhật `sim/rtl.f`, `sim/tb.f`, `sim/pat.list` (mặc định chỉ mở testcase của nhánh hiện tại, nhóm khác ở dạng `//TC_…`), mọi expected chỉ do golden model theo spec tính (tc chỉ có stimulus), log ngắn: `[ITEM]`/`[SUBITEM1]`/`[SUBITEM2]`, prefix `[t=… ns clk=…]`, mỗi thao tác một dòng, mỗi sai lệch một dòng FAIL, mô phỏng bằng QuestaSim (`make -C sim all TESTNAME=<ID>`) nếu có. |
 
 Thiết kế nhiều cấp: S2→S3 cho các leaf trước, rồi block, cuối cùng top. Có thể nêu nhiều module trong một lệnh; không có lệnh "all" – chủ ý để bạn duyệt từng module.
 
@@ -135,7 +136,7 @@ Script phục vụ workflow – không bao giờ cần tạo file giả để qu
 | `check_interface.py` | Bảng port: hướng, width, hậu tố; ở chế độ phân cấp thêm port treo, sai hướng cha–con/anh em, lệch width, input nhiều nguồn |
 | `lint_svg.py` | Diagram SVG: XML, header/level, chỉ đen trắng, không phần tử cấm, chữ tiếng Anh, tiền tố id, model khớp nhóm, luật theo level, tên port không nằm trong khối, đủ port (hỗ trợ gom bus `prefix_*`); không kiểm bố cục |
 | `check_ports.py` | Port list RTL so với bảng port (tính width từ parameter, kể cả `$clog2`) |
-| `check_sim_log.py` | Log S5, một hay nhiều file `sim/log/<ID>.log` (`-- <item name> test --`, `[<time>] <case> PASS\|FAIL \| expected: … \| actual: …` căn thẳng cột, `[SUMMARY]`, `Test_result`): map tên item về ID vplan; mọi item vplan có case và đều PASS, `[SUMMARY]`/`Test_result` khớp từng log, không TIMEOUT |
+| `check_sim_log.py` | Log S5, một hay nhiều file `sim/log/<ID>.log` (`[ITEM]`/`[SUBITEM1]`/`[SUBITEM2]`, dòng `[t=<ns> ns clk=<n>] [<TAG>] … expected: … actual: … PASS\|FAIL [(<note>)]`, `[SUMMARY]`, `Test_result`) đối chiếu cây Item của vplan: nhánh lá thiếu/thừa/sai cha/sai thứ tự, check ngoài nhánh lá, FAIL, `[SUMMARY]` = số dòng PASS / FAIL + dòng lỗi, `Test_result` khớp từng log, định dạng cũ, `clk` giảm, TIMEOUT |
 
 ## 8. Lưu ý
 

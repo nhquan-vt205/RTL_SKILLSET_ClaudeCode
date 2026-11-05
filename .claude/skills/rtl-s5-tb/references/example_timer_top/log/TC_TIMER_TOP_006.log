@@ -1,0 +1,62 @@
+[TEST] TC_TIMER_TOP_006: cnt_ctrl count enable through timer_top: TIM_EN start/stop and hardware clear, count interval 2^DIV_VAL, TDR writes ignored while TIM_EN = 1
+[TEST] DUT timer_top, public ports only (APB, dbg_mode); spec doc/spec/architecture/{timer_top,apb_slave,cnt_ctrl}_spec.md, doc/spec/register_file/register_map.md
+[TEST] Time: t in ns; clk = sys_clk rising edges since time 0 (20 ns period, never reset); inputs applied at rising edge + 1 ns, outputs sampled at the falling edge; APB line at completion, setup at clk - 2
+[TEST] Checks: expected from the golden model tb_timer_top_model; outputs compared at every falling edge, only deviations printed; APB WRITE ... OK = no error response (not a data check)
+[ITEM] cnt_ctrl_chk
+  [SUBITEM1] Timer enable
+    [GOAL] TIM_EN 0 -> 1 counts every cycle (DIV_EN 0); TIM_EN 1 -> 0 clears TDR0/TDR1; a TDR0 load while stopped is kept and counting resumes from it
+[t=       0 ns clk=     0] [RESET]           sys_rst_n = 0 (asserted for 2 rising edges)
+[t=      31 ns clk=     2] [RESET]           sys_rst_n = 1 (released)
+[t=     100 ns clk=     5] [APB WRITE TCR]   addr: 0x000 data: 0x00000001 strb: 0b0001 OK
+[t=     160 ns clk=     8] [APB READ TDR0]   addr: 0x004 expected:   2 counts actual:   2 counts PASS
+[t=     220 ns clk=    11] [APB WRITE TCR]   addr: 0x000 data: 0x00000000 strb: 0b0001 OK
+[t=     280 ns clk=    14] [APB READ TDR0]   addr: 0x004 expected:   0 counts actual:   0 counts PASS
+[t=     340 ns clk=    17] [APB READ TDR1]   addr: 0x008 expected:   0 counts actual:   0 counts PASS
+[t=     400 ns clk=    20] [APB WRITE TDR0]  addr: 0x004 data: 0x00000055 strb: 0b1111 OK
+[t=     411 ns clk=    21] [WAIT]            5 cycles, bus idle (clk=21..25)
+[t=     560 ns clk=    28] [APB READ TDR0]   addr: 0x004 expected:  85 counts actual:  85 counts PASS
+[t=     620 ns clk=    31] [APB WRITE TCR]   addr: 0x000 data: 0x00000001 strb: 0b0001 OK
+[t=     680 ns clk=    34] [APB READ TDR0]   addr: 0x004 expected:  87 counts actual:  87 counts PASS
+  [SUBITEM1] Divider setting
+    [GOAL] DIV_EN 1: one step every 2^DIV_VAL cycles from a fresh divider period, DIV_VAL 0 / 2 / 8; the cycles of the APB reads count too
+[t=     681 ns clk=    34] [RESET]           sys_rst_n = 0 (asserted for 2 rising edges)
+[t=     711 ns clk=    36] [RESET]           sys_rst_n = 1 (released)
+[t=     780 ns clk=    39] [APB WRITE TCR]   addr: 0x000 data: 0x00000002 strb: 0b0011 OK
+[t=     840 ns clk=    42] [APB WRITE TCR]   addr: 0x000 data: 0x00000003 strb: 0b0011 OK
+[t=     900 ns clk=    45] [APB READ TDR0]   addr: 0x004 expected:   2 counts actual:   2 counts PASS
+[t=     960 ns clk=    48] [APB READ TDR0]   addr: 0x004 expected:   5 counts actual:   5 counts PASS
+[t=    1020 ns clk=    51] [APB READ TDR0]   addr: 0x004 expected:   8 counts actual:   8 counts PASS
+[t=    1080 ns clk=    54] [APB WRITE TCR]   addr: 0x000 data: 0x00000002 strb: 0b0001 OK
+[t=    1140 ns clk=    57] [APB WRITE TCR]   addr: 0x000 data: 0x00000202 strb: 0b0011 OK
+[t=    1200 ns clk=    60] [APB WRITE TCR]   addr: 0x000 data: 0x00000203 strb: 0b0011 OK
+[t=    1260 ns clk=    63] [APB READ TDR0]   addr: 0x004 expected:   0 counts actual:   0 counts PASS
+[t=    1320 ns clk=    66] [APB READ TDR0]   addr: 0x004 expected:   1 counts actual:   1 counts PASS
+[t=    1380 ns clk=    69] [APB READ TDR0]   addr: 0x004 expected:   2 counts actual:   2 counts PASS
+[t=    1440 ns clk=    72] [APB READ TDR0]   addr: 0x004 expected:   2 counts actual:   2 counts PASS
+[t=    1500 ns clk=    75] [APB READ TDR0]   addr: 0x004 expected:   3 counts actual:   3 counts PASS
+[t=    1560 ns clk=    78] [APB WRITE TCR]   addr: 0x000 data: 0x00000202 strb: 0b0001 OK
+[t=    1620 ns clk=    81] [APB WRITE TCR]   addr: 0x000 data: 0x00000802 strb: 0b0011 OK
+[t=    1680 ns clk=    84] [APB WRITE TCR]   addr: 0x000 data: 0x00000803 strb: 0b0011 OK
+[t=    1691 ns clk=    85] [WAIT]            253 cycles, bus idle (clk=85..337)
+[t=    6800 ns clk=   340] [APB READ TDR0]   addr: 0x004 expected:   0 counts actual:   0 counts PASS
+[t=    6860 ns clk=   343] [APB READ TDR0]   addr: 0x004 expected:   1 counts actual:   1 counts PASS
+  [SUBITEM1] TDR write while counting
+    [GOAL] TIM_EN 1: TDR0/TDR1 writes complete without error and change neither counter nor divider (DIV_VAL 2); after TIM_EN 0 a TDR0 write is accepted
+[t=    6861 ns clk=   343] [RESET]           sys_rst_n = 0 (asserted for 2 rising edges)
+[t=    6891 ns clk=   345] [RESET]           sys_rst_n = 1 (released)
+[t=    6960 ns clk=   348] [APB WRITE TCR]   addr: 0x000 data: 0x00000202 strb: 0b0011 OK
+[t=    7020 ns clk=   351] [APB WRITE TCR]   addr: 0x000 data: 0x00000203 strb: 0b0011 OK
+[t=    7080 ns clk=   354] [APB WRITE TDR0]  addr: 0x004 data: 0x00000100 strb: 0b1111 OK
+[t=    7140 ns clk=   357] [APB READ TDR0]   addr: 0x004 expected:   1 counts actual:   1 counts PASS
+[t=    7200 ns clk=   360] [APB READ TDR0]   addr: 0x004 expected:   2 counts actual:   2 counts PASS
+[t=    7260 ns clk=   363] [APB WRITE TDR0]  addr: 0x004 data: 0x00000200 strb: 0b1111 OK
+[t=    7320 ns clk=   366] [APB READ TDR0]   addr: 0x004 expected:   3 counts actual:   3 counts PASS
+[t=    7380 ns clk=   369] [APB READ TDR0]   addr: 0x004 expected:   4 counts actual:   4 counts PASS
+[t=    7440 ns clk=   372] [APB WRITE TDR1]  addr: 0x008 data: 0x00000001 strb: 0b1111 OK
+[t=    7500 ns clk=   375] [APB READ TDR1]   addr: 0x008 expected:   0 counts actual:   0 counts PASS
+[t=    7560 ns clk=   378] [APB READ TDR0]   addr: 0x004 expected:   6 counts actual:   6 counts PASS
+[t=    7620 ns clk=   381] [APB WRITE TCR]   addr: 0x000 data: 0x00000202 strb: 0b0001 OK
+[t=    7680 ns clk=   384] [APB WRITE TDR0]  addr: 0x004 data: 0x00000055 strb: 0b1111 OK
+[t=    7740 ns clk=   387] [APB READ TDR0]   addr: 0x004 expected:  85 counts actual:  85 counts PASS
+[SUMMARY] PASS=22 FAIL=0
+Test_result: PASSED
